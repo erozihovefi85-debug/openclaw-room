@@ -1,11 +1,11 @@
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import mermaid from 'mermaid';
 import LZString from 'lz-string';
 import { Message, LoadingState, AppMode } from '../types';
-import { WorkflowState, WorkflowStage } from '../types/workflow';
+import { WorkflowState } from '../types/workflow';
 import {
     SendIcon, PaperclipIcon, FileIcon, UserIcon, RobotIcon, StopIcon, CopyIcon,
     CheckIcon, ArrowUpIcon, CloseIcon, DownloadIcon, LoaderIcon, ShareIcon,
@@ -13,7 +13,7 @@ import {
 } from './Icons';
 import { API_BASE_URL } from '../config';
 import { renderSupplierBookmarks, containsSupplierInfo } from '../utils/supplierParser';
-import RequirementList from './RequirementList';
+import { renderProductBookmarks, containsProductInfo } from '../utils/productParser';
 import Avatar from './Avatar';
 
 interface ChatAreaProps {
@@ -33,7 +33,8 @@ interface ChatAreaProps {
   onStageTransition?: (aiResponse: string) => boolean; // 检查阶段转换
   updateStageData?: (data: any) => void; // 更新阶段数据
   onSupplierFavorited?: () => void; // 供应商收藏后的回调
-  onConfirmRequirementList?: () => void; // 确认需求清单的回调
+  onProductBookmarked?: () => void; // 商品心愿单后的回调
+  userId?: string; // 用户ID，用于商品心愿单
   mode?: AppMode; // 使用 AppMode 类型
 }
 
@@ -103,7 +104,7 @@ const FileCard: React.FC<{ name: string; url?: string; size?: number; type?: str
 
 const ChatArea: React.FC<ChatAreaProps> = ({
     messages, isLoading, onSend, onCancel, placeholder, emptyState, readOnly, currentNodeName, conversationId,
-    workflowState, onStageTransition, updateStageData, onSupplierFavorited, onConfirmRequirementList, mode
+    workflowState, onStageTransition, updateStageData, onSupplierFavorited, onProductBookmarked, userId, mode
 }) => {
   const [inputText, setInputText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -116,92 +117,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const [copyLinkStatus, setCopyLinkStatus] = useState<'idle' | 'copied'>('idle');
   const [isAutoScroll, setIsAutoScroll] = useState(true);
   const [stageTransitionNotification, setStageTransitionNotification] = useState<string | null>(null);
-  const [requirementListData, setRequirementListData] = useState<any>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-
-  // 从 AI 响应中提取需求清单数据
-  const extractRequirementList = (content: string) => {
-    try {
-      // 尝试解析 JSON 格式
-      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        const parsed = JSON.parse(jsonMatch[1] || jsonMatch[0]);
-        if (parsed.items || parsed.requirements) {
-          return {
-            items: parsed.items || parsed.requirements,
-            summary: parsed.summary || '采购需求清单'
-          };
-        }
-      }
-
-      // 解析 Markdown 列表格式
-      const lines = content.split('\n');
-      const items: any[] = [];
-      let currentCategory = '其他';
-      let currentItem: any = null;
-
-      for (const line of lines) {
-        // 检测分类标题
-        if (line.startsWith('###') || line.startsWith('##')) {
-          currentCategory = line.replace(/^#+\s*/, '').trim();
-          continue;
-        }
-
-        // 检测列表项
-        const itemMatch = line.match(/^\d+\.\s+(.+?)[:：](.+)$/);
-        if (itemMatch) {
-          if (currentItem) {
-            items.push(currentItem);
-          }
-          currentItem = {
-            id: `req-${items.length}`,
-            title: itemMatch[1].trim(),
-            description: itemMatch[2].trim(),
-            category: currentCategory,
-            priority: 'medium'
-          };
-        } else if (currentItem && line.trim()) {
-          currentItem.description += '\n' + line.trim();
-        }
-      }
-
-      if (currentItem) {
-        items.push(currentItem);
-      }
-
-      if (items.length > 0) {
-        return {
-          items,
-          summary: '从对话中提取的采购需求清单'
-        };
-      }
-
-      return null;
-    } catch (e) {
-      console.error('Failed to extract requirement list:', e);
-      return null;
-    }
-  };
-
-  // 监听工作流阶段变化，提取需求清单
-  useEffect(() => {
-    if (!workflowState || !onConfirmRequirementList) return;
-
-    if (workflowState.currentStage === WorkflowStage.REQUIREMENT_LIST) {
-      // 从最后一条 AI 消息中提取需求清单
-      const lastAiMessage = [...messages].reverse().find(m => m.role === 'assistant');
-      if (lastAiMessage && !lastAiMessage.isTyping) {
-        const extracted = extractRequirementList(lastAiMessage.content);
-        if (extracted && extracted.items.length > 0) {
-          setRequirementListData(extracted);
-        }
-      }
-    }
-  }, [workflowState?.currentStage, messages, onConfirmRequirementList]);
 
   const scrollToBottom = (instant = false) => {
     messagesEndRef.current?.scrollIntoView({ behavior: instant ? 'auto' : 'smooth' });
@@ -230,24 +150,70 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     }
   }, [inputText]);
 
+  // 提取最后一条 AI 消息，用于监听内容变化
+  const lastAiMessage = useMemo(() => {
+    return [...messages].reverse().find(m => m.role === 'assistant');
+  }, [messages]);
+
   // Monitor AI responses for workflow stage transitions
   useEffect(() => {
     if (!onStageTransition || !workflowState) return;
 
-    // Get the last message
-    const lastMessage = messages[messages.length - 1];
-    if (!lastMessage || lastMessage.role !== 'assistant') return;
+    // 必须有最后一条 AI 消息
+    if (!lastAiMessage) return;
 
     // Only check for transition when AI is done typing (not streaming)
-    if (lastMessage.isTyping || isLoading === LoadingState.STREAMING) return;
+    if (lastAiMessage.isTyping || isLoading === LoadingState.STREAMING) return;
+
+    console.log('[ChatArea] ===== Checking for stage transition =====');
+    console.log('[ChatArea] Current workflowState.currentStage:', workflowState.currentStage);
+    console.log('[ChatArea] AI content preview:', lastAiMessage.content.substring(0, 100));
+    console.log('[ChatArea] Full AI content length:', lastAiMessage.content.length);
 
     // Check if the AI response triggers a stage transition
-    const transitioned = onStageTransition(lastMessage.content);
+    const transitioned = onStageTransition(lastAiMessage.content);
+
+    console.log('[ChatArea] ===== Transition result:', transitioned, '=====');
 
     if (transitioned) {
       // Import STAGE_CONFIG dynamically to avoid circular dependency
-      import('../types/workflow').then(({ STAGE_CONFIG }) => {
-        const newStageTitle = STAGE_CONFIG[workflowState.currentStage].title;
+      import('../types/workflow').then(({ STAGE_CONFIG, WorkflowStage }) => {
+        // Use the trigger keywords to determine which stage we're in now
+        // The checkForStageTransition has already updated the state in the hook
+        // We need to get the LATEST state from the hook, not from our closure
+        // Since we can't access the setter, we'll use the message content to determine the new stage
+        const content = lastAiMessage.content;
+
+        let detectedStage = workflowState.currentStage; // fallback to current
+
+        // Check which trigger keyword appeared in the message
+        // 注意：这里需要检测所有可能的触发词
+        if (content.includes('汇报！为您找到以下优质供应商') ||
+            content.includes('企业采购寻源报告') ||
+            content.includes('已进入**供应商收藏**')) {
+          detectedStage = WorkflowStage.SUPPLIER_FAVORITE;
+        } else if (content.includes('已进入**深度寻源**') || 
+                   content.includes('开始深度寻源') ||
+                   content.includes('是否开始深度寻源')) {
+          detectedStage = WorkflowStage.DEEP_SOURCING;
+        } else if (content.includes('已进入**需求清单**') || 
+                   content.includes('生成结构化需求清单') ||
+                   content.includes('报告！以下是为您生成的采购需求清单') ||
+                   content.includes('采购需求清单')) {
+          detectedStage = WorkflowStage.REQUIREMENT_LIST;
+        } else if (content.includes('已进入**初步寻源**') ||
+                   content.includes('开始初步寻源') ||
+                   content.includes('调研分析结果') ||
+                   content.includes('基于以上分析')) {
+          detectedStage = WorkflowStage.PRELIMINARY_SOURCING;
+        } else if (content.includes('已进入**供应商约谈**')) {
+          detectedStage = WorkflowStage.SUPPLIER_INTERVIEW;
+        }
+
+        const newStageTitle = STAGE_CONFIG[detectedStage].title;
+        console.log('[ChatArea] Stage transition detected!');
+        console.log('[ChatArea] New stage title:', newStageTitle);
+        console.log('[ChatArea] Detected stage enum:', detectedStage);
         setStageTransitionNotification(newStageTitle);
 
         // Auto-hide notification after 3 seconds
@@ -256,7 +222,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         }, 3000);
       });
     }
-  }, [messages, isLoading, onStageTransition, workflowState]);
+  }, [lastAiMessage?.content, lastAiMessage?.isTyping, isLoading, onStageTransition, workflowState]);
 
   const toggleSelectionMode = () => {
       setIsSelectionMode(!isSelectionMode);
@@ -366,22 +332,18 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 {showBubble && (
                   <div className={`relative px-4 py-3 rounded-2xl shadow-sm leading-relaxed pb-8 min-w-[40px] min-h-[44px] w-full ${msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-sm' : 'bg-white border border-slate-100 text-slate-700 rounded-tl-sm'}`}>
                     <div className={`prose prose-sm max-w-none ${msg.role === 'user' ? 'prose-invert' : 'prose-slate'}`}>
-                      <ReactMarkdown 
+                      <ReactMarkdown
                           remarkPlugins={[remarkGfm]}
                           components={{
                               a: ({node, ...props}) => <a target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline" {...props} />,
-                              table: ({node, ...props}) => (
-                                <div className="not-prose my-4 w-full overflow-x-auto border border-slate-200 rounded-xl shadow-sm bg-white custom-table-scrollbar">
-                                  <table className="min-w-full border-collapse divide-y divide-slate-200" {...props} />
-                                </div>
-                              ),
-                              thead: ({node, ...props}) => <thead className="bg-slate-50/80" {...props} />,
-                              th: ({node, ...props}) => <th className="px-5 py-3 text-left text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap" {...props} />,
-                              td: ({node, ...props}) => <td className="px-5 py-3 text-sm text-slate-600 border-t border-slate-100 whitespace-nowrap" {...props} />,
+                              table: ({node, ...props}) => <table className="min-w-full divide-y divide-slate-200" {...props} />,
+                              thead: ({node, ...props}) => <thead className="bg-slate-50" {...props} />,
+                              th: ({node, ...props}) => <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider" {...props} />,
+                              td: ({node, ...props}) => <td className="px-4 py-2 text-sm text-slate-600" {...props} />,
                               code: ({node, ...props}) => {
                                   const { className, children } = props;
                                   if (className?.includes('language-mermaid')) return <MermaidDiagram code={String(children).replace(/\n$/, '')} />;
-                                  return <code className={`${className} px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-mono text-xs`} {...props}>{children}</code>
+                                  return <code className={`${className} px-1.5 py-0.5 rounded bg-slate-100 text-slate-800 font-mono text-xs`}{...props}>{children}</code>
                               }
                           }}
                       >
@@ -417,8 +379,29 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                     <div className="mt-3 w-full">
                         {renderSupplierBookmarks(
                             msg.content,
+                            userId,
                             conversationId,
                             onSupplierFavorited
+                        )}
+                    </div>
+                )}
+
+                {/* 商品心愿单按钮 - 只在小美（casual）模式的 AI 消息中显示 */}
+                {mode === 'casual' && msg.role === 'assistant' && !msg.isTyping && userId && (() => {
+                  const hasInfo = containsProductInfo(msg.content);
+                  console.log('[ChatArea Product Button]', {
+                    messageId: msg.id,
+                    mode,
+                    hasProductInfo: hasInfo
+                  });
+                  return hasInfo;
+                })() && (
+                    <div className="mt-3 w-full">
+                        {renderProductBookmarks(
+                            msg.content,
+                            userId,
+                            conversationId,
+                            onProductBookmarked
                         )}
                     </div>
                 )}
@@ -428,8 +411,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         })}
         <div ref={messagesEndRef} />
 
-        {/* 需求清单组件 - 在需求清单阶段显示 */}
-        {requirementListData && workflowState?.currentStage === WorkflowStage.REQUIREMENT_LIST && (
+        {/* 需求清单组件 - 已禁用，需求清单作为普通 Markdown 内容显示 */}
+        {/* requirementListData && workflowState?.currentStage === WorkflowStage.REQUIREMENT_LIST && (
           <div className="max-w-4xl mx-auto mt-6 mb-4">
             <RequirementList
               items={requirementListData.items}
@@ -441,7 +424,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               }}
             />
           </div>
-        )}
+        ) */}
       </div>
       
       <button onClick={() => scrollContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' })} className={`absolute bottom-24 right-6 p-3 bg-white border border-slate-200 shadow-xl rounded-full text-slate-500 hover:text-blue-600 transition-all z-50 transform ${showScrollTop ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}><ArrowUpIcon className="w-5 h-5" /></button>

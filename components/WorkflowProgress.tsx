@@ -1,6 +1,6 @@
 import React from 'react';
 import { WorkflowStage, STAGE_CONFIG } from '../types/workflow';
-import { CheckCircleIcon, ChevronRightIcon } from './Icons';
+import { CheckCircleIcon } from './Icons';
 
 interface WorkflowProgressProps {
   currentStage: WorkflowStage;
@@ -15,6 +15,11 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
 }) => {
   const stages = Object.values(WorkflowStage);
   const currentIndex = stages.indexOf(currentStage);
+
+  console.log('[WorkflowProgress] ===== RENDER =====');
+  console.log('[WorkflowProgress] currentStage:', currentStage, '(', STAGE_CONFIG[currentStage].title, ')');
+  console.log('[WorkflowProgress] completedStages:', completedStages.map(s => STAGE_CONFIG[s].title));
+  console.log('[WorkflowProgress] currentIndex:', currentIndex);
 
   // 检查阶段是否可以点击
   const canClickStage = (stage: WorkflowStage): boolean => {
@@ -33,6 +38,8 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
     const isCompleted = completedStages.includes(stage);
     const isCurrent = stage === currentStage;
 
+    console.log('[WorkflowProgress] getStageStatus for', STAGE_CONFIG[stage].title, '- isCompleted:', isCompleted, 'isCurrent:', isCurrent);
+
     if (isCompleted) return 'completed';
     if (isCurrent) return 'current';
     // 只有当前阶段之前的已完成阶段才标记为 completed
@@ -41,10 +48,10 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
   };
 
   return (
-    <div className="bg-white border-b border-slate-200 px-4 py-3">
+    <div className="bg-white border-b border-slate-200 px-2 md:px-4 py-2 md:py-3">
       {/* 进度条 */}
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between">
+      <div className="max-w-4xl mx-auto overflow-x-auto">
+        <div className="flex items-center justify-between min-w-max md:min-w-0 md:justify-between px-1">
           {stages.map((stage, index) => {
             const config = STAGE_CONFIG[stage];
             const stageStatus = getStageStatus(stage, index);
@@ -61,7 +68,7 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
                 >
                   {/* 图标 */}
                   <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all ${
+                    className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-sm md:text-lg transition-all ${
                       stageStatus === 'completed'
                         ? 'bg-green-500 text-white shadow-lg shadow-green-200'
                         : stageStatus === 'current'
@@ -70,16 +77,16 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
                     }`}
                   >
                     {stageStatus === 'completed' ? (
-                      <CheckCircleIcon className="w-5 h-5" />
+                      <CheckCircleIcon className="w-4 h-4 md:w-5 md:h-5" />
                     ) : (
                       <span>{config.icon}</span>
                     )}
                   </div>
 
-                  {/* 标题 */}
-                  <div className="mt-1 text-center">
+                  {/* 标题 - 移动端只显示部分标题以节省空间 */}
+                  <div className={`mt-0.5 md:mt-1 text-center ${index % 2 === 0 ? 'block' : 'hidden md:block'}`}>
                     <p
-                      className={`text-xs font-medium whitespace-nowrap ${
+                      className={`text-[10px] md:text-xs font-medium whitespace-nowrap ${
                         stageStatus === 'current'
                           ? 'text-blue-600'
                           : stageStatus === 'completed'
@@ -95,12 +102,11 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
                 {/* 连接线 */}
                 {index < stages.length - 1 && (
                   <div
-                    className={`flex-1 h-1 mx-2 rounded-full transition-all ${
+                    className={`flex-1 h-0.5 md:h-1 mx-1 md:mx-2 rounded-full transition-all min-w-[8px] md:min-w-0 ${
                       stageStatus === 'completed' || (stageStatus === 'current' && index < currentIndex)
                         ? 'bg-gradient-to-r from-green-400 to-blue-400'
                         : 'bg-slate-200'
                     }`}
-                    style={{ maxWidth: '60px' }}
                   />
                 )}
               </React.Fragment>
@@ -109,11 +115,11 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
         </div>
 
         {/* 当前阶段描述 */}
-        <div className="mt-4 text-center">
-          <p className="text-sm text-slate-600">
+        <div className="mt-3 md:mt-4 text-center">
+          <p className="text-xs md:text-sm text-slate-600">
             <span className="font-medium">当前阶段：</span>
             <span className="ml-1">{STAGE_CONFIG[currentStage].title}</span>
-            <span className="mx-2">•</span>
+            <span className="mx-1 md:mx-2">•</span>
             <span className="text-slate-500">{STAGE_CONFIG[currentStage].description}</span>
           </p>
         </div>

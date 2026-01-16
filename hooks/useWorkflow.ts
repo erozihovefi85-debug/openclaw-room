@@ -122,23 +122,189 @@ export const useWorkflow = () => {
     localStorage.setItem(VERSION_KEY, STORAGE_VERSION);
   }, []);
 
+  // 处理所有历史消息的AI响应，更新工作流状态到最新
+  const processHistoricalMessages = useCallback((messages: Array<{ role: string; content: string; isTyping?: boolean }>) => {
+    console.log('[processHistoricalMessages] ===== START =====');
+    console.log('[processHistoricalMessages] Processing', messages.length, 'messages');
+
+    // 使用函数式更新，避免闭包陷阱和依赖循环
+    setWorkflowState(prevState => {
+      console.log('[processHistoricalMessages] prevState.currentStage:', prevState.currentStage);
+      const stages = Object.values(WorkflowStage);
+      let currentStageIndex = stages.indexOf(prevState.currentStage);
+      let currentStage = prevState.currentStage;
+      let completedStages = [...prevState.completedStages];
+      let stageData = { ...prevState.stageData };
+      let hasTransitioned = false;
+
+      // 按顺序处理所有消息
+      for (const message of messages) {
+        if (message.role !== 'assistant') continue;
+        // 跳过正在打字的消息
+        if (message.isTyping) continue;
+
+        const aiResponse = message.content;
+        const currentIndex = stages.indexOf(currentStage);
+        console.log('[processHistoricalMessages] Processing message, currentStage:', currentStage);
+        console.log('[processHistoricalMessages] Content preview:', aiResponse.substring(0, 80));
+
+        // 1. 检查配置的触发词
+        const currentConfig = STAGE_CONFIG[currentStage];
+        if (currentConfig.nextTrigger && currentConfig.nextTrigger.length > 0) {
+          const hasTriggerKeyword = currentConfig.nextTrigger.some(keyword => {
+            const found = aiResponse.includes(keyword);
+            if (found) {
+              console.log('[processHistoricalMessages] ✅ Found trigger keyword:', keyword);
+            }
+            return found;
+          });
+
+          if (hasTriggerKeyword && currentIndex < stages.length - 1) {
+            const nextStage = stages[currentIndex + 1];
+            console.log('[processHistoricalMessages] 🚀 Advancing from', STAGE_CONFIG[currentStage].title, 'to', STAGE_CONFIG[nextStage].title);
+            completedStages.push(currentStage);
+            stageData[currentStage] = { aiResponse };
+            currentStage = nextStage;
+            currentStageIndex = currentIndex + 1;
+            hasTransitioned = true;
+            continue;
+          }
+        }
+
+        // 2. 检查通用的"已进入**XX**阶段"格式
+        const stageTransitionPattern = /已进入\*\*([^*]+)\*\*[阶段期]/;
+        const match = aiResponse.match(stageTransitionPattern);
+        if (match) {
+          const targetStageTitle = match[1];
+          console.log('[processHistoricalMessages] Found stage transition pattern:', targetStageTitle);
+
+          // 查找匹配的阶段
+          for (let i = currentIndex + 1; i < stages.length; i++) {
+            const stage = stages[i];
+            const config = STAGE_CONFIG[stage];
+            if (config.title === targetStageTitle || targetStageTitle.includes(config.title)) {
+              console.log('[processHistoricalMessages] ✅ Matched stage:', config.title, 'at index:', i);
+
+              // 找到目标阶段，标记中间所有阶段为已完成
+              if (i > currentIndex) {
+                const newlyCompleted = stages.slice(currentIndex, i);
+                console.log('[processHistoricalMessages] 🚀 Marking completed:', newlyCompleted.map(s => STAGE_CONFIG[s].title));
+                // 将当前阶段及之前的所有阶段标记为已完成（不包括目标阶段）
+                completedStages.push(...newlyCompleted);
+                stageData[currentStage] = { aiResponse };
+                currentStage = stage;
+                currentStageIndex = i;
+                hasTransitioned = true;
+                break;
+              }
+            }
+            if (currentStageIndex === i) break; // 已找到并更新，退出内层循环
+          }
+        }
+      }
+
+      // 如果有任何阶段转换，更新状态
+      if (hasTransitioned) {
+        console.log('[processHistoricalMessages] ✅ Updating workflow state to:', STAGE_CONFIG[currentStage].title);
+        console.log('[processHistoricalMessages] Completed stages:', completedStages.map(s => STAGE_CONFIG[s].title));
+        console.log('[processHistoricalMessages] ===== END (with updates) =====');
+        return {
+          currentStage,
+          completedStages,
+          stageData,
+          createdAt: prevState.createdAt,
+          updatedAt: Date.now()
+        };
+      }
+
+      console.log('[processHistoricalMessages] ❌ No transition detected, returning prevState');
+      console.log('[processHistoricalMessages] ===== END (no changes) =====');
+      // 没有转换时返回原状态（返回相同引用，避免触发重新渲染）
+      return prevState;
+    });
+  }, []); // 空依赖数组，使用函数式更新避免闭包问题
+
   // 检查 AI 响应是否包含阶段转换信号
   const checkForStageTransition = useCallback((aiResponse: string) => {
-    const currentConfig = STAGE_CONFIG[workflowState.currentStage];
+    console.log('[checkForStageTransition] === START ===');
+    
+    // 使用函数式更新来避免闭包问题
+    let transitioned = false;
+    
+    setWorkflowState(prev => {
+      const currentConfig = STAGE_CONFIG[prev.currentStage];
+      const stages = Object.values(WorkflowStage);
+      const currentIndex = stages.indexOf(prev.currentStage);
 
-    if (currentConfig.nextTrigger && currentConfig.nextTrigger.length > 0) {
-      const hasTriggerKeyword = currentConfig.nextTrigger.some(keyword =>
-        aiResponse.includes(keyword)
-      );
+      console.log('[checkForStageTransition] Current stage:', STAGE_CONFIG[prev.currentStage].title);
+      console.log('[checkForStageTransition] AI response preview:', aiResponse.substring(0, 100));
 
-      if (hasTriggerKeyword) {
-        advanceToNextStage({ aiResponse });
-        return true;
+      // 1. 首先检查配置的触发词
+      if (currentConfig.nextTrigger && currentConfig.nextTrigger.length > 0) {
+        const hasTriggerKeyword = currentConfig.nextTrigger.some(keyword =>
+          aiResponse.includes(keyword)
+        );
+
+        if (hasTriggerKeyword) {
+          console.log('[checkForStageTransition] ✅ Trigger keyword found! Advancing to next stage');
+          const nextStage = stages[currentIndex + 1];
+          if (nextStage) {
+            transitioned = true;
+            console.log('[checkForStageTransition] Advancing from', prev.currentStage, 'to', nextStage);
+            return {
+              ...prev,
+              currentStage: nextStage,
+              completedStages: [...prev.completedStages, prev.currentStage],
+              stageData: {
+                ...prev.stageData,
+                [prev.currentStage]: { aiResponse }
+              },
+              updatedAt: Date.now()
+            };
+          }
+        }
       }
-    }
 
-    return false;
-  }, [workflowState.currentStage, advanceToNextStage]);
+      // 2. 检查通用的"已进入**XX**阶段"格式
+      const stageTransitionPattern = /已进入\*\*([^*]+)\*\*[阶段期]/;
+      const match = aiResponse.match(stageTransitionPattern);
+      if (match) {
+        const targetStageTitle = match[1];
+        console.log('[checkForStageTransition] Found stage transition pattern:', targetStageTitle);
+        // 查找匹配的阶段
+        for (let i = currentIndex + 1; i < stages.length; i++) {
+          const stage = stages[i];
+          const config = STAGE_CONFIG[stage];
+          if (config.title === targetStageTitle || targetStageTitle.includes(config.title)) {
+            console.log('[checkForStageTransition] ✅ Matched stage:', config.title, 'at index:', i);
+            // 找到目标阶段，标记中间所有阶段为已完成
+            if (i > currentIndex) {
+              transitioned = true;
+              // 手动推进到目标阶段
+              const newlyCompleted = stages.slice(currentIndex, i);
+              console.log('[checkForStageTransition] Marking completed:', newlyCompleted);
+              return {
+                ...prev,
+                currentStage: stage,
+                completedStages: [...prev.completedStages, ...newlyCompleted],
+                stageData: {
+                  ...prev.stageData,
+                  [prev.currentStage]: { aiResponse }
+                },
+                updatedAt: Date.now()
+              };
+            }
+          }
+        }
+      }
+
+      console.log('[checkForStageTransition] ❌ No transition triggered');
+      return prev;
+    });
+
+    console.log('[checkForStageTransition] === END ===, transitioned:', transitioned);
+    return transitioned;
+  }, []);
 
   // 手动推进到指定阶段（用于需要用户确认的场景）
   const manuallyAdvanceToStage = useCallback((targetStage: WorkflowStage, data?: any) => {
@@ -159,7 +325,7 @@ export const useWorkflow = () => {
       return {
         ...prev,
         currentStage: targetStage,
-        completedStages: [...prev.completedStages, ...newlyCompleted.slice(0, -1)],
+        completedStages: [...prev.completedStages, ...newlyCompleted],
         stageData: {
           ...prev.stageData,
           [prev.currentStage]: data || prev.stageData[prev.currentStage]
@@ -189,6 +355,7 @@ export const useWorkflow = () => {
     resetWorkflow,
     checkForStageTransition,
     manuallyAdvanceToStage,
-    updateStageData
+    updateStageData,
+    processHistoricalMessages
   };
 };
