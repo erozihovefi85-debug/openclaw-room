@@ -44,6 +44,7 @@ router.post('/stream', auth, upload.array('files', 10), async (req, res) => {
   console.log('ContextId:', contextId);
   console.log('API Key (first 20 chars):', apiKey?.substring(0, 20));
   console.log('Query:', query?.substring(0, 50));
+  console.log('Request conversationId:', conversationId);
   console.log('========================');
 
   try {
@@ -63,6 +64,11 @@ router.post('/stream', auth, upload.array('files', 10), async (req, res) => {
     let conv = null;
     if (conversationId) {
       conv = await findConversationById(conversationId);
+      console.log('Found conversation from DB:', {
+        mongoId: conv._id.toString(),
+        difyConversationId: conv.difyConversationId,
+        contextId: conv.contextId
+      });
     } else {
       conv = await Conversation.create({
         userId,
@@ -70,6 +76,10 @@ router.post('/stream', auth, upload.array('files', 10), async (req, res) => {
         name: query.substring(0, 50) + '...',
         mode: contextId.startsWith('casual') ? 'casual' : 'standard',
         tab: contextId.replace('standard_', '') || null,
+      });
+      console.log('Created new conversation:', {
+        mongoId: conv._id.toString(),
+        contextId: conv.contextId
       });
     }
 
@@ -85,6 +95,13 @@ router.post('/stream', auth, upload.array('files', 10), async (req, res) => {
     // Track message for streaming
     let fullResponse = '';
 
+    // Log Dify conversation ID before streaming
+    console.log('Sending to Dify:', {
+      query: query?.substring(0, 50),
+      difyConversationId: conv.difyConversationId || '(empty - new conversation)',
+      userId
+    });
+
     // Stream from Dify
     await streamChatMessage(
       query,
@@ -99,6 +116,10 @@ router.post('/stream', auth, upload.array('files', 10), async (req, res) => {
       (newDifyConvId, generatedFiles) => {
         // Update conversation with Dify ID
         if (newDifyConvId && !conv.difyConversationId) {
+          console.log('Saving Dify conversation ID:', {
+            mongoId: conv._id.toString(),
+            difyConversationId: newDifyConvId
+          });
           conv.difyConversationId = newDifyConvId;
           conv.save();
         }

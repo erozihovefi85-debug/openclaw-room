@@ -12,7 +12,7 @@ dotenv.config();
 
 // Initialize Express app
 const app = express();
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 3001;
 
 // Get __dirname in ES modules
 const __filename = fileURLToPath(import.meta.url);

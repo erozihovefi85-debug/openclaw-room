@@ -24,29 +24,32 @@ router.get('/', auth, async (req, res) => {
   try {
     const userId = req.userId;
     const contextId = req.query.contextId || 'casual_main';
+    const sync = req.query.sync === 'true'; // 可选参数：是否同步 Dify 数据
 
-    // Get API key for this context
-    const { getApiKey } = await import('../services/difyService.js');
-    const apiKey = getApiKey(contextId);
+    // 如果请求同步，则从 Dify 获取并更新本地数据库
+    if (sync) {
+      const { getApiKey } = await import('../services/difyService.js');
+      const apiKey = getApiKey(contextId);
 
-    // Get conversations from Dify
-    const difyConversations = await fetchConversations(userId, apiKey);
+      // Get conversations from Dify
+      const difyConversations = await fetchConversations(userId, apiKey);
 
-    // Sync with local database
-    for (const difyConv of difyConversations) {
-      await Conversation.findOneAndUpdate(
-        { difyConversationId: difyConv.id, userId },
-        {
-          contextId,
-          name: difyConv.name || 'New Conversation',
-          mode: contextId.startsWith('casual') ? 'casual' : 'standard',
-          tab: contextId.replace('standard_', '') || null,
-        },
-        { upsert: true, new: true }
-      );
+      // Sync with local database
+      for (const difyConv of difyConversations) {
+        await Conversation.findOneAndUpdate(
+          { difyConversationId: difyConv.id, userId },
+          {
+            contextId,
+            name: difyConv.name || 'New Conversation',
+            mode: contextId.startsWith('casual') ? 'casual' : 'standard',
+            tab: contextId.replace('standard_', '') || null,
+          },
+          { upsert: true, new: true }
+        );
+      }
     }
 
-    // Get all local conversations for this context
+    // Get all local conversations for this context (优先使用本地数据)
     const localConversations = await Conversation.find({ userId, contextId })
       .sort({ updatedAt: -1 });
 
