@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../services/api';
 import {
   HomeIcon, UsersIcon, ChatIcon, SearchIcon, BarChartIcon,
-  LogOutIcon, TrendingUpIcon, ActivityIcon, FileTextIcon
+  LogOutIcon, TrendingUpIcon, ActivityIcon, FileTextIcon, SettingsIcon
 } from './Icons';
+import CategoryTemplates from './CategoryTemplates';
+import { BACKEND_API_URL } from '../config';
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -84,6 +86,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onBackHome })
             { id: 'conversations', label: '会话管理', icon: <ChatIcon className="w-5 h-5" /> },
             { id: 'analytics', label: '数据分析', icon: <TrendingUpIcon className="w-5 h-5" /> },
             { id: 'activity', label: '活动日志', icon: <ActivityIcon className="w-5 h-5" /> },
+            { id: 'templates', label: '品类模板', icon: <SettingsIcon className="w-5 h-5" /> },
           ].map((item) => (
             <button
               key={item.id}
@@ -130,6 +133,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onBackHome })
             {activeTab === 'conversations' && '会话管理'}
             {activeTab === 'analytics' && '数据分析'}
             {activeTab === 'activity' && '活动日志'}
+            {activeTab === 'templates' && '采购品类模板管理'}
           </h2>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-sm text-slate-500">
@@ -424,6 +428,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onLogout, onBackHome })
                   <BarChartIcon className="w-16 h-16 mx-auto mb-4" />
                   <p>数据分析功能开发中...</p>
                 </div>
+              )}
+
+              {activeTab === 'templates' && (
+                <CategoryTemplates API_BASE_URL={BACKEND_API_URL} />
               )}
             </>
           )}

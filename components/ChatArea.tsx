@@ -5,7 +5,7 @@ import remarkGfm from 'remark-gfm';
 import mermaid from 'mermaid';
 import LZString from 'lz-string';
 import { Message, LoadingState, AppMode } from '../types';
-import { WorkflowState } from '../types/workflow';
+import { WorkflowState, WorkflowStage } from '../types/workflow';
 import {
     SendIcon, PaperclipIcon, FileIcon, UserIcon, RobotIcon, StopIcon, CopyIcon,
     CheckIcon, ArrowUpIcon, CloseIcon, DownloadIcon, LoaderIcon, ShareIcon,
@@ -14,7 +14,9 @@ import {
 import { API_BASE_URL } from '../config';
 import { renderSupplierBookmarks, containsSupplierInfo } from '../utils/supplierParser';
 import { renderProductBookmarks, containsProductInfo } from '../utils/productParser';
+import { extractRequirementListWithCategory, generateRequirementListExcelWithTemplate } from '../services/siliconflowAPI';
 import Avatar from './Avatar';
+import WorkflowNavigation from './WorkflowNavigation';
 
 interface ChatAreaProps {
   messages: Message[];
@@ -36,6 +38,7 @@ interface ChatAreaProps {
   onProductBookmarked?: () => void; // 商品心愿单后的回调
   userId?: string; // 用户ID，用于商品心愿单
   mode?: AppMode; // 使用 AppMode 类型
+  onNavigateToStage?: (stage: WorkflowStage) => void; // 手动切换阶段
 }
 
 const fixUrl = (url: string) => {
@@ -104,7 +107,7 @@ const FileCard: React.FC<{ name: string; url?: string; size?: number; type?: str
 
 const ChatArea: React.FC<ChatAreaProps> = ({
     messages, isLoading, onSend, onCancel, placeholder, emptyState, readOnly, currentNodeName, conversationId,
-    workflowState, onStageTransition, updateStageData, onSupplierFavorited, onProductBookmarked, userId, mode
+    workflowState, onStageTransition, updateStageData, onSupplierFavorited, onProductBookmarked, userId, mode, onNavigateToStage
 }) => {
   const [inputText, setInputText] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -117,6 +120,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const [copyLinkStatus, setCopyLinkStatus] = useState<'idle' | 'copied'>('idle');
   const [isAutoScroll, setIsAutoScroll] = useState(true);
   const [stageTransitionNotification, setStageTransitionNotification] = useState<string | null>(null);
+  const [isExtractingRequirements, setIsExtractingRequirements] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -272,6 +276,76 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleDownloadRequirementList = async (messages: Message[], userId: string) => {
+    if (!userId) {
+      showNotification('请先登录', 'error');
+      return;
+    }
+
+    try {
+      setIsExtractingRequirements(true);
+      showNotification('正在从对话中提取需求清单并识别采购品类...', 'success');
+
+      console.log('[handleDownloadRequirementList] Starting extraction with category identification...');
+
+      // 使用后端API提取需求清单并识别采购品类
+      const requirementListData = await extractRequirementListWithCategory(
+        messages.map(m => ({ role: m.role, content: m.content }))
+      );
+
+      if (!requirementListData || !requirementListData.items || requirementListData.items.length === 0) {
+        showNotification('未能从对话中提取到需求清单，请确保对话包含明确的采购需求', 'error');
+        return;
+      }
+
+      console.log('[handleDownloadRequirementList] Extracted requirements:', requirementListData);
+      console.log('[handleDownloadRequirementList] Procurement category:', requirementListData.procurement_category);
+
+      // 使用品类模板生成Excel
+      const blob = await generateRequirementListExcelWithTemplate(
+        {
+          items: requirementListData.items,
+          projectSummary: requirementListData.projectSummary,
+        },
+        requirementListData.procurement_category.code
+      );
+
+      // 获取文件名（使用品类名称）
+      const categoryName = requirementListData.procurement_category.name || '需求清单';
+      const fileName = `${categoryName}-${Date.now()}.xlsx`;
+
+      // 下载文件
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      showNotification(`成功生成${categoryName}，包含${requirementListData.items.length}项需求！`, 'success');
+    } catch (error) {
+      console.error('Download requirement list error:', error);
+      showNotification('生成需求清单失败，请重试', 'error');
+    } finally {
+      setIsExtractingRequirements(false);
+    }
+  };
+
+  const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 px-4 py-2 rounded-lg shadow-lg text-white z-50 ${
+      type === 'success' ? 'bg-green-500' : 'bg-red-500'
+    }`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    setTimeout(() => {
+      notification.remove();
+    }, 3000);
+  };
+
   return (
     <div className="flex flex-col h-full bg-white relative">
       {/* Stage Transition Notification */}
@@ -405,6 +479,32 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                         )}
                     </div>
                 )}
+
+                {/* 需求清单下载按钮 - 只在需求清单阶段显示 */}
+                {msg.role === 'assistant' && !msg.isTyping && workflowState?.currentStage === WorkflowStage.REQUIREMENT_LIST && (
+                    <div className="mt-3 w-full">
+                        <button
+                            onClick={() => {
+                              console.log('[ChatArea Requirement List] Extracting from conversation...');
+                              handleDownloadRequirementList(messages, userId || '');
+                            }}
+                            disabled={isExtractingRequirements || !userId}
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isExtractingRequirements ? (
+                              <>
+                                <LoaderIcon className="w-4 h-4 animate-spin" />
+                                正在生成...
+                              </>
+                            ) : (
+                              <>
+                                <DownloadIcon className="w-4 h-4" />
+                                下载需求清单 Excel
+                              </>
+                            )}
+                        </button>
+                    </div>
+                )}
               </div>
             </div>
           );
@@ -439,8 +539,32 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       )}
 
       {!readOnly && !isSelectionMode && (
-          <div className="p-4 bg-white border-t border-slate-100 shrink-0">
+          <div className="bg-white border-t border-slate-100 shrink-0">
             <div className="max-w-4xl mx-auto">
+              {/* 工作流阶段导航 - 只在标准模式（小帅）下显示 */}
+              {mode === 'standard' && workflowState && onNavigateToStage && messages.length > 0 && (() => {
+                const stages = Object.values(WorkflowStage);
+                const currentIndex = stages.indexOf(workflowState.currentStage);
+                const hasNextStage = currentIndex < stages.length - 1;
+                const hasPreviousStage = currentIndex > 0;
+                return (
+                  <div className="mb-3">
+                    <WorkflowNavigation
+                      currentStage={workflowState.currentStage}
+                      completedStages={workflowState.completedStages}
+                      onNextStage={hasNextStage ? () => {
+                        onNavigateToStage(stages[currentIndex + 1]);
+                      } : undefined}
+                      onPreviousStage={hasPreviousStage ? () => {
+                        onNavigateToStage(stages[currentIndex - 1]);
+                      } : undefined}
+                      canGoNext={hasNextStage}
+                      canGoPrevious={hasPreviousStage}
+                    />
+                  </div>
+                );
+              })()}
+
               {selectedFiles.length > 0 && (
                 <div className="flex flex-wrap gap-2 mb-3">
                   {selectedFiles.map((file, i) => (

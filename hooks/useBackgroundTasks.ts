@@ -7,6 +7,7 @@ export interface BackgroundTask {
   status: 'running' | 'completed' | 'failed';
   startTime: number;
   endTime?: number;
+  completedAt?: number; // 任务完成时间戳
   result?: any;
   error?: string;
   conversationId?: string;
@@ -68,6 +69,7 @@ export const useBackgroundTasks = () => {
           ...task,
           status,
           endTime: Date.now(),
+          completedAt: Date.now(), // 添加完成时间戳
           result,
           error
         };

@@ -80,7 +80,7 @@ const App: React.FC = () => {
     removeTask
   } = useBackgroundTasks();
   const [notifications, setNotifications] = useState<ToastNotification[]>([]);
-  const [showBackgroundTasks, setShowBackgroundTasks] = useState(true);
+  const [showBackgroundTasks, setShowBackgroundTasks] = useState(false);
   const prevBackgroundTasksRef = useRef<typeof backgroundTasks>([]);
   const notifiedTaskIdsRef = useRef<Set<string>>(new Set()); // 跟踪已通知的任务
 
@@ -424,7 +424,9 @@ const App: React.FC = () => {
     const key = currentConversationId || currentContextId;
 
     // Create background task for this conversation
-    const taskId = addTask('chat', text.substring(0, 30) + (text.length > 30 ? '...' : ''), currentConversationId, currentContextId);
+    // 注意：只有在有 conversationId 时才传递，避免传递空字符串
+    const taskConversationId = currentConversationId || undefined;
+    const taskId = addTask('chat', text.substring(0, 30) + (text.length > 30 ? '...' : ''), taskConversationId, currentContextId);
 
     // 1. Add User Message (with file metadata for display)
     const userMsgId = Date.now().toString();
@@ -486,13 +488,21 @@ const App: React.FC = () => {
             msg.id === assistantMsgId ? { ...msg, isTyping: false, generated_files: generatedFiles } : msg
         ));
 
+        // 确定最终的 conversationId
+        const finalConversationId = newConversationId || targetConvId;
+
         // 如果是新创建的对话（之前没有 conversationId），现在设置为当前对话
-        if (!targetConvId && newConversationId) {
-          setCurrentConversationId(newConversationId);
+        if (!targetConvId && finalConversationId) {
+          setCurrentConversationId(finalConversationId);
         }
 
-        // Complete background task
-        completeTask(taskId, 'completed', { conversationId: newConversationId || targetConvId });
+        // Complete background task with the correct conversationId
+        if (finalConversationId) {
+          completeTask(taskId, 'completed', { conversationId: finalConversationId });
+        } else {
+          // 如果仍然没有 conversationId（不应该发生），标记任务为失败
+          completeTask(taskId, 'failed', undefined, '无法获取对话ID');
+        }
 
         // 不自动切换到新对话，让用户自己选择查看
         // 只是在后台加载对话列表
@@ -833,6 +843,7 @@ const App: React.FC = () => {
                     onProductBookmarked={handleProductBookmarked}
                     userId={user?.id}
                     mode={appMode}
+                    onNavigateToStage={jumpToStage}
                 />
             </StandardView>
         ) : (
@@ -866,9 +877,14 @@ const App: React.FC = () => {
                             description: currentUiConfig.emptyDesc
                         }}
                         conversationId={currentConversationId}
+                        workflowState={workflowState}
+                        onStageTransition={checkForStageTransition}
+                        updateStageData={updateStageData}
+                        onSupplierFavorited={handleSupplierFavorited}
                         onProductBookmarked={handleProductBookmarked}
                         userId={user?.id}
                         mode={appMode}
+                        onNavigateToStage={jumpToStage}
                     />
                 </main>
             </>
@@ -890,19 +906,74 @@ const App: React.FC = () => {
             // 只隐藏前端弹窗，不停止后台任务
             setShowBackgroundTasks(false);
           }}
-          onTaskClick={(task) => {
-            if (task.status === 'completed' && task.conversationId) {
-              // 根据 contextId 切换到正确的模式
+          onTaskClick={async (task) => {
+            console.log('[onTaskClick] ===== START =====');
+            console.log('[onTaskClick] Task:', task);
+            console.log('[onTaskClick] Task.conversationId:', task.conversationId);
+
+            if (task.status === 'completed') {
+              if (!task.conversationId) {
+                console.log('[onTaskClick] ERROR: Task has no conversationId!');
+                setShowBackgroundTasks(false);
+                alert('该任务没有关联的对话，无法查看');
+                return;
+              }
+
+              console.log('[onTaskClick] Task clicked:', task.id, 'conversationId:', task.conversationId, 'contextId:', task.contextId);
+              console.log('[onTaskClick] Current state - appMode:', appMode, 'standardTab:', standardTab, 'currentConversationId:', currentConversationId);
+
+              // 如果点击的任务就是当前对话，不需要重新加载
+              if (task.conversationId === currentConversationId) {
+                console.log('[onTaskClick] Already viewing this conversation, skipping reload');
+                setShowBackgroundTasks(false);
+                return;
+              }
+
+              // 先隐藏弹窗，避免重复点击
+              setShowBackgroundTasks(false);
+
+              // 根据 contextId 检查是否需要切换到正确的模式
               if (task.contextId) {
+                let needsModeSwitch = false;
+
                 if (task.contextId === 'casual_main') {
-                  setAppMode('casual');
+                  // 只有当前不在 casual 模式时才切换
+                  needsModeSwitch = appMode !== 'casual';
+                  if (needsModeSwitch) {
+                    console.log('[onTaskClick] Switching to casual mode');
+                    // 直接设置模式，不通过 handleContextSwitch，避免清空 conversationId
+                    setAppMode('casual');
+                  }
                 } else if (task.contextId.startsWith('standard_')) {
                   const tab = task.contextId.replace('standard_', '');
-                  setStandardTab(tab);
-                  setAppMode('standard');
+                  // 只有当前不在 standard 模式或 tab 不同时才切换
+                  needsModeSwitch = appMode !== 'standard' || standardTab !== tab;
+                  if (needsModeSwitch) {
+                    console.log('[onTaskClick] Switching to standard mode, tab:', tab);
+                    setStandardTab(tab);
+                    // 直接设置模式，不通过 handleContextSwitch，避免重置工作流
+                    setAppMode('standard');
+                  }
+                }
+
+                // 如果切换了模式，等待一个事件循环确保状态已更新
+                if (needsModeSwitch) {
+                  console.log('[onTaskClick] Waiting for mode switch...');
+                  await new Promise(resolve => setTimeout(resolve, 100));
                 }
               }
-              setCurrentConversationId(task.conversationId);
+
+              console.log('[onTaskClick] Loading conversation:', task.conversationId);
+              // 使用 handleSelectConversation 来正确加载对话和同步工作流状态
+              // 注意：不要在这里预先设置 currentConversationId，让 handleSelectConversation 来处理
+              await handleSelectConversation(task.conversationId);
+
+              console.log('[onTaskClick] Conversation loaded');
+              console.log('[onTaskClick] Final state - currentConversationId:', currentConversationId);
+              console.log('[onTaskClick] Messages in map:', messagesMap[task.conversationId]?.length || 0);
+              console.log('[onTaskClick] ===== END =====');
+            } else {
+              console.log('[onTaskClick] Task not completed, status:', task.status);
             }
           }}
         />

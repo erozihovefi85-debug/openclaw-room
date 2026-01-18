@@ -23,7 +23,10 @@
       "Skill(frontend-design)",
       "Skill(frontend-design:*)",
       "Bash(dir:*)",
-      "mcp__zai-mcp-server__extract_text_from_screenshot"
+      "mcp__zai-mcp-server__extract_text_from_screenshot",
+      "Bash(pm2 list:*)",
+      "Bash(TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2OTZjZmI1NDNiMDRmZGE3MjM3YWUyMDAiLCJpYXQiOjE3Njg3NDk5MDgsImV4cCI6MTc2OTM1NDcwOH0.c4ou5ay6ThItz_AkJ_IIsZ45fvAJbVyRAOewLsGw2aw\":*)",
+      "Bash(test:*)"
     ]
   }
 }

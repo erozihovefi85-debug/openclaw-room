@@ -43,6 +43,8 @@ import adminRoutes from './routes/admin.js';
 import configRoutes from './routes/config.js';
 import supplierRoutes from './routes/suppliers.js';
 import productRoutes from './routes/products.js';
+import requirementListRoutes from './routes/requirementList.js';
+import procurementCategoriesRoutes from './routes/procurementCategories.js';
 
 app.use('/api', apiRoutes);
 app.use('/api/auth', authRoutes);
@@ -52,6 +54,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/suppliers', supplierRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/requirement-list', requirementListRoutes);
+app.use('/api/procurement-categories', procurementCategoriesRoutes);
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {

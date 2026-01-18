@@ -89,20 +89,29 @@ export const useWorkflow = () => {
     });
   }, []);
 
-  // 跳转到指定阶段（仅允许已完成阶段或当前阶段）
+  // 跳转到指定阶段
+  // 支持跳转到下一阶段（将当前阶段标记为完成）或返回已完成阶段
   const jumpToStage = useCallback((stage: WorkflowStage) => {
     setWorkflowState(prev => {
-      // 检查是否可以跳转
       const stages = Object.values(WorkflowStage);
       const currentIndex = stages.indexOf(prev.currentStage);
       const targetIndex = stages.indexOf(stage);
 
-      // 只允许跳转到已完成阶段或上一阶段
-      const isCompletedStage = prev.completedStages.includes(stage);
-      const isCurrentStage = stage === prev.currentStage;
-      const isPreviousStage = targetIndex === currentIndex - 1;
+      // 情况1：跳转到下一阶段（需要标记当前阶段为完成）
+      if (targetIndex === currentIndex + 1) {
+        console.log('[jumpToStage] Advancing to next stage, marking current as completed');
+        return {
+          ...prev,
+          currentStage: stage,
+          completedStages: [...prev.completedStages, prev.currentStage],
+          updatedAt: Date.now()
+        };
+      }
 
-      if (isCurrentStage || isCompletedStage || isPreviousStage) {
+      // 情况2：返回已完成阶段
+      const isCompletedStage = prev.completedStages.includes(stage);
+      if (isCompletedStage) {
+        console.log('[jumpToStage] Returning to completed stage');
         return {
           ...prev,
           currentStage: stage,
@@ -110,6 +119,13 @@ export const useWorkflow = () => {
         };
       }
 
+      // 情况3：停留在当前阶段
+      if (stage === prev.currentStage) {
+        return prev;
+      }
+
+      // 其他情况：不允许跳转
+      console.warn('[jumpToStage] Invalid stage transition:', prev.currentStage, '->', stage);
       return prev;
     });
   }, []);

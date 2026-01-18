@@ -16,10 +16,10 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
   const stages = Object.values(WorkflowStage);
   const currentIndex = stages.indexOf(currentStage);
 
-  console.log('[WorkflowProgress] ===== RENDER =====');
-  console.log('[WorkflowProgress] currentStage:', currentStage, '(', STAGE_CONFIG[currentStage].title, ')');
-  console.log('[WorkflowProgress] completedStages:', completedStages.map(s => STAGE_CONFIG[s].title));
-  console.log('[WorkflowProgress] currentIndex:', currentIndex);
+  // 只在开发环境输出详细日志
+  if (import.meta.env.DEV) {
+    console.log('[WorkflowProgress] currentStage:', currentStage, 'completedStages:', completedStages);
+  }
 
   // 检查阶段是否可以点击
   const canClickStage = (stage: WorkflowStage): boolean => {
@@ -37,8 +37,6 @@ const WorkflowProgress: React.FC<WorkflowProgressProps> = ({
   const getStageStatus = (stage: WorkflowStage, index: number) => {
     const isCompleted = completedStages.includes(stage);
     const isCurrent = stage === currentStage;
-
-    console.log('[WorkflowProgress] getStageStatus for', STAGE_CONFIG[stage].title, '- isCompleted:', isCompleted, 'isCurrent:', isCurrent);
 
     if (isCompleted) return 'completed';
     if (isCurrent) return 'current';

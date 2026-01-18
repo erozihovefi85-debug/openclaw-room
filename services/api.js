@@ -168,6 +168,45 @@ export const productWishlistAPI = {
   },
 };
 
+// Requirement List APIs
+export const requirementListAPI = {
+  // 生成需求清单Excel
+  generate: (data) => {
+    const token = localStorage.getItem('procureai_token');
+    return axios.post(`${API_BASE_URL}/requirement-list/generate`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      responseType: 'blob',
+    });
+  },
+
+  // 解析上传的需求清单Excel
+  parse: (file) => {
+    const token = localStorage.getItem('procureai_token');
+    const formData = new FormData();
+    formData.append('file', file);
+    return axios.post(`${API_BASE_URL}/requirement-list/parse`, formData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+
+  // 获取需求清单模板
+  getTemplate: () => {
+    const token = localStorage.getItem('procureai_token');
+    return axios.get(`${API_BASE_URL}/requirement-list/template`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      responseType: 'blob',
+    });
+  },
+};
+
 // Chat Streaming API
 export const chatAPI = {
   stream: (data, onChunk, onEnd, onError, onNodeChange) => {
