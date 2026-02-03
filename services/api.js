@@ -38,6 +38,7 @@ export const authAPI = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   getCurrentUser: () => api.get('/auth/me'),
+  updateProfile: (data) => api.patch('/auth/profile', data),
 };
 
 // Conversation APIs
@@ -46,6 +47,11 @@ export const conversationAPI = {
   getById: (id) => api.get(`/conversations/${id}`),
   getMessages: (id, params) => api.get(`/conversations/${id}/messages`, { params }),
   delete: (id) => api.delete(`/conversations/${id}`),
+};
+
+// Agent Task APIs
+export const agentTaskAPI = {
+  getByConversation: (conversationId) => api.get(`/agent-tasks/${conversationId}`),
 };
 
 // Image Search APIs
@@ -209,7 +215,7 @@ export const requirementListAPI = {
 
 // Chat Streaming API
 export const chatAPI = {
-  stream: (data, onChunk, onEnd, onError, onNodeChange) => {
+  stream: (data, onChunk, onEnd, onError, onNodeChange, onTaskEvent) => {
     const token = localStorage.getItem('procureai_token');
     const formData = new FormData();
 
@@ -260,6 +266,8 @@ export const chatAPI = {
                 onError(data.error);
               } else if (data.type === 'node') {
                 onNodeChange(data.nodeName);
+              } else if (data.type === 'task' && onTaskEvent) {
+                onTaskEvent(data.payload);
               }
             } catch (e) {
               console.warn("Failed to parse SSE data", e);
@@ -269,6 +277,13 @@ export const chatAPI = {
       }
     });
   },
+};
+
+// User Preference APIs
+export const userPreferenceAPI = {
+  getAll: () => api.get('/user-preferences'),
+  update: (data) => api.patch('/user-preferences', data),
+  reset: () => api.delete('/user-preferences/reset'),
 };
 
 export default api;

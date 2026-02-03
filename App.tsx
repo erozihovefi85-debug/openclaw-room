@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
+import AgentTaskPanel from './components/AgentTaskPanel';
 import HomeView from './components/HomeView';
+import ChatHomeView from './components/ChatHomeView';
 import StandardView from './components/StandardView';
-import LoginModal from './components/LoginModalNew';
+import LoginPage from './components/LoginPage';
 import UserCenter from './components/UserCenter';
 import AdminDashboard from './components/AdminDashboard';
 import SupplierFavorites from './components/SupplierFavorites';
@@ -18,9 +20,10 @@ import {
   LoadingState,
   UploadedFile,
   AppMode,
-  User
+  User,
+  AgentTaskState
 } from './types';
-import { chatAPI, conversationAPI } from './services/api';
+import { chatAPI, conversationAPI, agentTaskAPI } from './services/api';
 import { CURRENT_USER_ID } from './config';
 import { useWorkflow } from './hooks/useWorkflow';
 
@@ -53,6 +56,34 @@ const UI_CONFIG: Record<string, { placeholder: string; emptyTitle: string; empty
     }
 };
 
+const AGENT_STAGE_DEFS: Record<'casual' | 'standard', { key: string; label: string }[]> = {
+  casual: [
+    { key: 'receive', label: '接收任务' },
+    { key: 'preliminary', label: '初步调研' },
+    { key: 'deep', label: '深度调研' },
+    { key: 'check', label: '结果检查' },
+    { key: 'review', label: '结果校对' },
+    { key: 'result', label: '选购方案' }
+  ],
+  standard: [
+    { key: 'receive', label: '接收任务' },
+    { key: 'preliminary', label: '初步调研' },
+    { key: 'deep', label: '深度搜索' },
+    { key: 'check', label: '结果检查' },
+    { key: 'review', label: '结果校对' },
+    { key: 'result', label: '供应商推荐' }
+  ]
+};
+
+const buildDefaultAgentTask = (mode: 'casual' | 'standard'): AgentTaskState => ({
+  stages: AGENT_STAGE_DEFS[mode].map((stage, index) => ({
+    key: stage.key,
+    label: stage.label,
+    status: 'pending',
+    order: index
+  }))
+});
+
 const App: React.FC = () => {
   // --- Auth State ---
   const [user, setUser] = useState<User | null>(() => {
@@ -68,7 +99,6 @@ const App: React.FC = () => {
         return null;
       }
   });
-  const [showLoginModal, setShowLoginModal] = useState(false);
 
   // --- Notifications ---
   const [notifications, setNotifications] = useState<ToastNotification[]>([]);
@@ -134,6 +164,7 @@ const App: React.FC = () => {
   // Per-conversation loading states - supports parallel conversations
   const [conversationLoadingStates, setConversationLoadingStates] = useState<Record<string, LoadingState>>({});
   const [currentNodeNames, setCurrentNodeNames] = useState<Record<string, string | null>>({});
+  const [agentTaskMap, setAgentTaskMap] = useState<Record<string, AgentTaskState>>({});
 
   const getCurrentConversationLoadingState = () => {
     const key = currentConversationId || currentContextId;
@@ -146,12 +177,29 @@ const App: React.FC = () => {
   const [currentConversationId, setCurrentConversationId] = useState<string>('');
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const pendingMessageRef = useRef<{ text: string; files: File[] } | null>(null);
 
   const currentContextId = useMemo(() => {
     if (appMode === 'casual') return 'casual_main';
     if (appMode === 'standard') return `standard_${standardTab}`;
     return 'casual_main';
   }, [appMode, standardTab]);
+
+  const getAgentMode = (contextId: string) => contextId.startsWith('casual') ? 'casual' : 'standard';
+
+  const normalizeAgentTaskState = (mode: 'casual' | 'standard', state?: AgentTaskState): AgentTaskState => {
+    const base = buildDefaultAgentTask(mode);
+    if (!state) return base;
+    const stageMap = new Map((state.stages || []).map((stage) => [stage.key, stage]));
+    const mergedStages = base.stages.map((stage) => ({
+      ...stage,
+      ...(stageMap.get(stage.key) || {})
+    }));
+    return {
+      ...state,
+      stages: mergedStages
+    };
+  };
 
   const currentMessages = useMemo(() => {
     // If a conversation is selected, show its messages (cached by conversation ID)
@@ -163,6 +211,7 @@ const App: React.FC = () => {
   }, [messagesMap, currentContextId, currentConversationId]);
 
   const currentUiConfig = UI_CONFIG[currentContextId] || UI_CONFIG['casual_main'];
+  const currentAgentTask = agentTaskMap[currentConversationId || currentContextId];
 
   // Handle Auth Changes
   useEffect(() => {
@@ -207,7 +256,23 @@ const App: React.FC = () => {
     }
   };
 
-  const handleContextSwitch = (newMode: AppMode, newTab?: string, categoryCode?: string) => {
+  const loadAgentTask = async (conversationId: string) => {
+    try {
+      const response = await agentTaskAPI.getByConversation(conversationId);
+      const task = response.data?.data;
+      if (!task) return;
+      const mode = task.mode || getAgentMode(currentContextId);
+      const normalized = normalizeAgentTaskState(mode, task as AgentTaskState);
+      setAgentTaskMap(prev => ({
+        ...prev,
+        [conversationId]: normalized
+      }));
+    } catch (error) {
+      console.error('Failed to load agent task:', error);
+    }
+  };
+
+  const handleContextSwitch = (newMode: AppMode, newTab?: string, categoryCode?: string, keepConversationId?: boolean) => {
       // Store previous mode before switching (for supplier favorites and wishlist return)
       if (newMode === 'user-center' || newMode === 'suppliers' || newMode === 'wishlist') {
         setPreviousMode(appMode);
@@ -216,16 +281,9 @@ const App: React.FC = () => {
         }
       }
 
-      // Permission check: standard procurement requires login
-      if (newMode === 'standard' && !user) {
-          setShowLoginModal(true);
-          return;
-      }
-
-      // Permission check: casual mode also requires login
-      if (newMode === 'casual' && !user) {
-          setShowLoginModal(true);
-          return;
+      // Permission check: all modes except home require login
+      if (newMode !== 'home' && !user) {
+        return; // Stay on login page
       }
 
       // Permission check: admin requires admin role
@@ -240,7 +298,8 @@ const App: React.FC = () => {
         sessionStorage.setItem('selectedCategoryCode', categoryCode);
       }
 
-      if (newMode === 'casual' || newMode === 'standard') {
+      // Only clear conversationId if we're not keeping it (i.e., not loading a history conversation)
+      if ((newMode === 'casual' || newMode === 'standard') && !keepConversationId) {
         setCurrentConversationId('');
 
         // 切换到标准模式时，重置工作流状态
@@ -253,7 +312,7 @@ const App: React.FC = () => {
       if (newTab) setStandardTab(newTab);
 
       // 切换标准模式的标签页时，重置工作流状态
-      if (newMode === 'standard' && newTab) {
+      if (newMode === 'standard' && newTab && !keepConversationId) {
         resetWorkflow();
       }
   };
@@ -272,10 +331,46 @@ const App: React.FC = () => {
       }));
   };
 
+  const applyAgentTaskEvent = useCallback((payload: any) => {
+    if (!payload) return;
+    const mode = payload.mode || getAgentMode(currentContextId);
+    const key = payload.conversationId || currentConversationId || currentContextId;
+
+    setAgentTaskMap(prev => {
+      const existing = normalizeAgentTaskState(mode, prev[key]);
+      const stages = existing.stages.map(stage => {
+        if (stage.key !== payload.stageKey) return stage;
+        return {
+          ...stage,
+          status: payload.status || stage.status,
+          label: payload.stageLabel || stage.label,
+          lastNodeTitle: payload.nodeTitle || stage.lastNodeTitle,
+          lastNodeType: payload.nodeType || stage.lastNodeType,
+          lastNodeId: payload.nodeId || stage.lastNodeId
+        };
+      });
+
+      return {
+        ...prev,
+        [key]: {
+          ...existing,
+          conversationId: payload.conversationId || existing.conversationId,
+          contextId: payload.contextId || existing.contextId,
+          mode,
+          stages,
+          currentStageKey: payload.stageKey || existing.currentStageKey,
+          lastEventAt: payload.timestamp || existing.lastEventAt
+        }
+      };
+    });
+  }, [currentContextId, currentConversationId]);
+
   const handleNewChat = (targetContextId?: string) => {
     const contextId = targetContextId || currentContextId;
+    const mode = getAgentMode(contextId);
     setCurrentConversationId('');
     setMessagesMap(prev => ({ ...prev, [contextId]: [] }));
+    setAgentTaskMap(prev => ({ ...prev, [contextId]: buildDefaultAgentTask(mode) }));
 
     // 重置工作流状态到初始阶段
     if (appMode === 'standard') {
@@ -289,6 +384,7 @@ const App: React.FC = () => {
     // Don't block switching - allow viewing any conversation even if streaming
     // Set the selected conversation ID first
     setCurrentConversationId(id);
+    loadAgentTask(id);
 
     // Use conversation ID as key for caching, not context ID
     const conversationKey = id;
@@ -370,6 +466,12 @@ const App: React.FC = () => {
   const handleSend = async (text: string, files: File[]) => {
     const userId = user?.id || CURRENT_USER_ID;
     const key = currentConversationId || currentContextId;
+    const mode = getAgentMode(currentContextId);
+
+    setAgentTaskMap(prev => ({
+      ...prev,
+      [key]: prev[key] ? normalizeAgentTaskState(mode, prev[key]) : buildDefaultAgentTask(mode)
+    }));
 
     // 1. Add User Message (with file metadata for display)
     const userMsgId = Date.now().toString();
@@ -448,6 +550,14 @@ const App: React.FC = () => {
               [currentContextId]: contextMessages
             };
           });
+          setAgentTaskMap(prev => {
+            const contextTask = prev[currentContextId] || buildDefaultAgentTask(mode);
+            return {
+              ...prev,
+              [finalConversationId]: contextTask,
+              [currentContextId]: contextTask
+            };
+          });
           setCurrentConversationId(finalConversationId);
         }
 
@@ -467,6 +577,9 @@ const App: React.FC = () => {
       },
       (nodeName) => {
         setCurrentNodeNames(prev => ({ ...prev, [key]: nodeName }));
+      },
+      (taskPayload) => {
+        applyAgentTaskEvent(taskPayload);
       }
     );
 
@@ -475,7 +588,7 @@ const App: React.FC = () => {
 
   const handleLogin = (mockUser: User) => {
     setUser(mockUser);
-    setShowLoginModal(false);
+    setAppMode('home'); // Go to home after login
   };
 
   const handleLogout = () => {
@@ -542,6 +655,22 @@ const App: React.FC = () => {
     processHistoricalMessages(messages);
   }, [appMode, currentConversationId, currentMessages.length, processHistoricalMessages]); // 保持依赖完整
 
+  // --- Send pending message after mode switch ---
+  useEffect(() => {
+    if (pendingMessageRef.current && (appMode === 'casual' || appMode === 'standard')) {
+      const { text, files } = pendingMessageRef.current;
+      // Clear the ref first to prevent re-sending
+      pendingMessageRef.current = null;
+      // Send the message
+      handleSend(text, files);
+    }
+  }, [appMode, currentContextId]); // Trigger when appMode or currentContextId changes
+
+  // --- Login Page ---
+  if (!user) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   // --- Render Shared View ---
   if (sharedMessages) {
       return (
@@ -561,6 +690,7 @@ const App: React.FC = () => {
                       isLoading={LoadingState.IDLE}
                       onSend={() => {}}
                       readOnly={true}
+                      user={user}
                       userId={user?.id}
                       emptyState={{
                           title: "无分享内容",
@@ -601,7 +731,6 @@ const App: React.FC = () => {
               onClose={() => setSidebarOpen(false)}
               user={user}
               onOpenUserCenter={() => setAppMode('user-center')}
-              onLoginRequest={() => setShowLoginModal(true)}
               onAdminClick={() => setAppMode('admin')}
               onSupplierFavorites={() => handleContextSwitch('suppliers')}
               onProductWishlist={() => handleContextSwitch('wishlist')}
@@ -665,7 +794,6 @@ const App: React.FC = () => {
               onClose={() => setSidebarOpen(false)}
               user={user}
               onOpenUserCenter={() => setAppMode('user-center')}
-              onLoginRequest={() => setShowLoginModal(true)}
               onAdminClick={() => setAppMode('admin')}
               onProductWishlist={() => handleContextSwitch('wishlist')}
               isAdmin={user?.role === 'ADMIN'}
@@ -711,17 +839,41 @@ const App: React.FC = () => {
       );
   }
 
-  // Home Mode
+  // Home Mode - Use new ChatHomeView with direct chat interfaces
   if (appMode === 'home') {
     return (
       <>
-        <HomeView
-          onSelectMode={(mode, categoryCode) => handleContextSwitch(mode, undefined, categoryCode)}
-          onLoginRequest={() => setShowLoginModal(true)}
-          onGoToUserCenter={() => setAppMode('user-center')}
+        <ChatHomeView
           user={user}
+          onSelectMode={async (mode, categoryCode, initialMessage, conversationId) => {
+            // If loading a history conversation, pass true to keep conversationId
+            handleContextSwitch(mode, undefined, categoryCode, !!conversationId);
+            // If there's a conversation ID, load the conversation
+            if (conversationId) {
+              setCurrentConversationId(conversationId);
+              // Load conversation messages
+              const conversationKey = conversationId;
+              try {
+                const response = await conversationAPI.getMessages(conversationId);
+                setMessagesMap(prev => ({
+                  ...prev,
+                  [conversationKey]: response.data
+                }));
+                // Sync workflow state if in standard mode
+                if (mode === 'standard' && response.data.length > 0) {
+                  processHistoricalMessages(response.data);
+                }
+              } catch (e) {
+                console.error("Failed to load conversation", e);
+              }
+            }
+            // If there's an initial message, store it for sending after mode switch
+            if (initialMessage) {
+              pendingMessageRef.current = { text: initialMessage, files: [] };
+            }
+          }}
+          onGoToUserCenter={() => setAppMode('user-center')}
         />
-        {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} onLogin={handleLogin} />}
       </>
     );
   }
@@ -733,6 +885,7 @@ const App: React.FC = () => {
         user={user}
         onBack={handleBackFromUserCenter}
         onLogout={handleLogout}
+        onUserUpdate={(updatedUser) => setUser(updatedUser as User)}
       />
     );
   }
@@ -753,7 +906,6 @@ const App: React.FC = () => {
         onClose={() => setSidebarOpen(false)}
         user={user}
         onOpenUserCenter={() => setAppMode('user-center')}
-        onLoginRequest={() => setShowLoginModal(true)}
         onAdminClick={() => handleContextSwitch('admin')}
         onSupplierFavorites={appMode === 'standard' ? () => handleContextSwitch('suppliers') : undefined}
         onProductWishlist={appMode === 'casual' ? () => handleContextSwitch('wishlist') : undefined}
@@ -762,34 +914,41 @@ const App: React.FC = () => {
 
       <div className="relative flex-1 flex flex-col min-w-0 bg-white h-full overflow-hidden">
         {appMode === 'standard' ? (
-             <StandardView
-                onMobileMenuClick={() => setSidebarOpen(true)}
-                workflowState={workflowState}
-                onStageClick={jumpToStage}
-                onPreviousStage={goToPreviousStage}
-            >
-                <ChatArea
-                    messages={currentMessages}
-                    isLoading={getCurrentConversationLoadingState()}
-                    currentNodeName={currentNodeNames[currentConversationId || currentContextId]}
-                    onSend={handleSend}
-                    onCancel={handleStop}
-                    placeholder={currentUiConfig.placeholder}
-                    emptyState={{
-                        title: currentUiConfig.emptyTitle,
-                        description: currentUiConfig.emptyDesc
-                    }}
-                    conversationId={currentConversationId}
-                    workflowState={workflowState}
-                    onStageTransition={checkForStageTransition}
-                    updateStageData={updateStageData}
-                    onSupplierFavorited={handleSupplierFavorited}
-                    onProductBookmarked={handleProductBookmarked}
-                    userId={user?.id}
-                    mode={appMode}
-                    onNavigateToStage={jumpToStage}
-                />
-            </StandardView>
+            <StandardView
+               onMobileMenuClick={() => setSidebarOpen(true)}
+               workflowState={workflowState}
+               onStageClick={jumpToStage}
+               onPreviousStage={goToPreviousStage}
+           >
+               <div className="flex h-full">
+                   <div className="flex-1 min-w-0">
+                       <ChatArea
+                           messages={currentMessages}
+                           isLoading={getCurrentConversationLoadingState()}
+                           currentNodeName={currentNodeNames[currentConversationId || currentContextId]}
+                           onSend={handleSend}
+                           onCancel={handleStop}
+                           placeholder={currentUiConfig.placeholder}
+                           emptyState={{
+                               title: currentUiConfig.emptyTitle,
+                               description: currentUiConfig.emptyDesc
+                           }}
+                           conversationId={currentConversationId}
+                           workflowState={workflowState}
+                           onStageTransition={checkForStageTransition}
+                           updateStageData={updateStageData}
+                           onSupplierFavorited={handleSupplierFavorited}
+                           onProductBookmarked={handleProductBookmarked}
+                           user={user}
+                           userId={user?.id}
+                           mode={appMode}
+                           onNavigateToStage={jumpToStage}
+                       />
+                   </div>
+                   <AgentTaskPanel mode="standard" taskState={currentAgentTask} />
+               </div>
+           </StandardView>
+
         ) : (
             <>
                 <header className="h-14 px-4 border-b border-slate-100 flex items-center justify-between shrink-0 bg-white z-10 md:hidden">
@@ -808,33 +967,36 @@ const App: React.FC = () => {
                     </button>
                 </header>
 
-                <main className="flex-1 relative flex flex-col min-h-0 overflow-hidden w-full">
-                    <ChatArea
-                        messages={currentMessages}
-                        isLoading={getCurrentConversationLoadingState()}
-                        currentNodeName={currentNodeNames[currentConversationId || currentContextId]}
-                        onSend={handleSend}
-                        onCancel={handleStop}
-                        placeholder={currentUiConfig.placeholder}
-                        emptyState={{
-                            title: currentUiConfig.emptyTitle,
-                            description: currentUiConfig.emptyDesc
-                        }}
-                        conversationId={currentConversationId}
-                        workflowState={workflowState}
-                        onStageTransition={checkForStageTransition}
-                        updateStageData={updateStageData}
-                        onSupplierFavorited={handleSupplierFavorited}
-                        onProductBookmarked={handleProductBookmarked}
-                        userId={user?.id}
-                        mode={appMode}
-                        onNavigateToStage={jumpToStage}
-                    />
+                <main className="flex-1 relative flex min-h-0 overflow-hidden w-full">
+                    <div className="flex-1 min-w-0">
+                        <ChatArea
+                            messages={currentMessages}
+                            isLoading={getCurrentConversationLoadingState()}
+                            currentNodeName={currentNodeNames[currentConversationId || currentContextId]}
+                            onSend={handleSend}
+                            onCancel={handleStop}
+                            placeholder={currentUiConfig.placeholder}
+                            emptyState={{
+                                title: currentUiConfig.emptyTitle,
+                                description: currentUiConfig.emptyDesc
+                            }}
+                            conversationId={currentConversationId}
+                            workflowState={workflowState}
+                            onStageTransition={checkForStageTransition}
+                            updateStageData={updateStageData}
+                            onSupplierFavorited={handleSupplierFavorited}
+                            onProductBookmarked={handleProductBookmarked}
+                            user={user}
+                            userId={user?.id}
+                            mode={appMode}
+                            onNavigateToStage={jumpToStage}
+                        />
+                    </div>
+                    <AgentTaskPanel mode="casual" taskState={currentAgentTask} />
                 </main>
             </>
         )}
       </div>
-      {showLoginModal && <LoginModal onClose={() => setShowLoginModal(false)} onLogin={handleLogin} />}
 
       {/* 通知组件 */}
       <ToastNotifications

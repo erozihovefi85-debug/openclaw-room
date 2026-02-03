@@ -1,0 +1,45 @@
+# ==========================================
+# 前端 Dockerfile
+# ==========================================
+
+# 阶段 1: 构建
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# 复制 package 文件
+COPY package*.json ./
+
+# 安装依赖
+RUN npm ci
+
+# 复制源代码和配置
+COPY . .
+
+# 设置构建时环境变量
+ARG VITE_API_URL=http://localhost:3001/api
+ARG VITE_NODE_ENV=production
+
+# 构建应用
+RUN npm run build
+
+# ==========================================
+# 阶段 2: 生产环境
+# ==========================================
+FROM nginx:alpine
+
+# 复制自定义 nginx 配置
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# 从构建阶段复制构建产物
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# 添加 nginx 用户权限
+RUN chmod -R 755 /usr/share/nginx/html && \
+    chown -R nginx:nginx /usr/share/nginx/html
+
+# 暴露端口
+EXPOSE 80
+
+# 默认 nginx 命令会使用配置文件
+CMD ["nginx", "-g", "daemon off;"]

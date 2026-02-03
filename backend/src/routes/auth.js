@@ -122,4 +122,37 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
+// Update user profile (protected)
+router.patch('/profile', auth, async (req, res) => {
+  try {
+    const { name, avatar } = req.body;
+    const userId = req.userId;
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Update fields
+    if (name) user.name = name;
+    if (avatar) user.avatar = avatar;
+
+    await user.save();
+
+    res.json({
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      credits: user.credits,
+      joinDate: user.joinDate,
+      avatar: user.avatar,
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 export default router;

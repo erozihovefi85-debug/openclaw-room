@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { SparklesIcon, CheckIcon, GiftIcon, UserIcon, ChevronRightIcon, SearchIcon } from './Icons';
 import { User } from '../types';
+import UserAvatar from './UserAvatar';
 
 interface HomeViewProps {
   onSelectMode: (mode: 'casual' | 'standard', categoryCode?: string) => void;
@@ -225,14 +226,32 @@ const Navbar: React.FC<{ onShowToast: (msg: string) => void; onLoginRequest: () 
     return (
         <nav className="fixed top-0 left-0 right-0 z-50 h-16 bg-slate-50/80 backdrop-blur-md border-b border-slate-200/50 flex items-center justify-between px-6 transition-all">
             <div className="flex items-center gap-3">
-                 {/* Browser/Brand Icon */}
-                 <div className="w-9 h-9 p-1.5 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center text-white shadow-md shrink-0">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="w-full h-full overflow-visible">
-                       <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                 {/* Logo Icon */}
+                 <div className="w-9 h-9 relative">
+                    <svg viewBox="0 0 64 64" fill="none" className="w-full h-full drop-shadow-md">
+                      <defs>
+                        <linearGradient id="navLogoGradient" x1="0" y1="0" x2="64" y2="64">
+                          <stop offset="0%" stop-color="#3B82F6"/>
+                          <stop offset="100%" stop-color="#10B981"/>
+                        </linearGradient>
+                        <linearGradient id="navSparkleGradient" x1="0" y1="0" x2="64" y2="64">
+                          <stop offset="0%" stop-color="#FCD34D"/>
+                          <stop offset="100%" stop-color="#F59E0B"/>
+                        </linearGradient>
+                      </defs>
+                      <circle cx="32" cy="32" r="30" fill="url(#navLogoGradient)"/>
+                      <path d="M22 12 L42 12 L46 20 L46 48 C46 52 42 54 32 54 C22 54 18 52 18 48 L22 40 L34 40 L34 28 L22 28 Z" fill="white" opacity="0.95"/>
+                      <g transform="translate(44 18)">
+                        <circle r="6" fill="url(#navSparkleGradient)"/>
+                        <path d="M0 -4 L0 4 M-4 0 L4 0" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                        <circle r="2" fill="white"/>
+                      </g>
+                      <circle cx="28" cy="34" r="2" fill="url(#navLogoGradient)"/>
+                      <circle cx="36" cy="34" r="2" fill="url(#navLogoGradient)"/>
                     </svg>
                  </div>
-                 {/* Metallic Text Style */}
-                 <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-slate-700 via-slate-500 to-slate-700 tracking-tight italic pr-2">
+                 {/* Brand Text */}
+                 <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-emerald-600 tracking-tight">
                     ProcureAI
                  </span>
             </div>
@@ -258,10 +277,10 @@ const Navbar: React.FC<{ onShowToast: (msg: string) => void; onLoginRequest: () 
                  {user ? (
                    <button
                      onClick={onGoToUserCenter || (() => onShowToast('用户中心功能开发中'))}
-                     className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 transition-all hover:bg-blue-100"
+                     className="flex items-center gap-2 px-2 py-1 bg-blue-50 text-blue-600 rounded-lg border border-blue-100 transition-all hover:bg-blue-100"
                    >
-                      <UserIcon className="w-4 h-4" />
-                      <span className="text-xs font-bold truncate max-w-[80px]">{user.name}</span>
+                      <UserAvatar avatarType={user.avatar || 'blue'} size="sm" />
+                      <span className="text-xs font-bold truncate max-w-[100px]">{user.name}</span>
                    </button>
                  ) : (
                    <button 

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="logoGradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3B82F6"/>
+      <stop offset="100%" stop-color="#10B981"/>
+    </linearGradient>
+    <linearGradient id="sparkleGradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FCD34D"/>
+      <stop offset="100%" stop-color="#F59E0B"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background Circle -->
+  <circle cx="32" cy="32" r="30" fill="url(#logoGradient)"/>
+
+  <!-- Letter P shape with shopping bag design -->
+  <path d="M22 12
+           L42 12
+           L46 20
+           L46 48
+           C46 52
+           42 54
+           32 54
+           C22 54
+           18 52
+           18 48
+           L22 40
+           L34 40
+           L34 28
+           L22 28
+           Z"
+        fill="white"
+        opacity="0.95"/>
+
+  <!-- AI Sparkle star -->
+  <g transform="translate(44, 18)">
+    <circle r="6" fill="url(#sparkleGradient)"/>
+    <path d="M0 -4 L0 4 M-4 0 L4 0" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    <circle r="2" fill="white"/>
+  </g>
+
+  <!-- Shopping dots on the bag -->
+  <circle cx="28" cy="34" r="2" fill="url(#logoGradient)"/>
+  <circle cx="36" cy="34" r="2" fill="url(#logoGradient)"/>
+</svg>

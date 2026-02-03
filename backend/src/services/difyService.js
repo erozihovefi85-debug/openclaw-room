@@ -34,7 +34,19 @@ export const uploadFile = async (file, userId) => {
   return response.data;
 };
 
-export const streamChatMessage = async (query, conversationId, files, userId, apiKey, onChunk, onEnd, onError, onNodeChange) => {
+export const streamChatMessage = async (
+  query,
+  conversationId,
+  files,
+  userId,
+  apiKey,
+  onChunk,
+  onEnd,
+  onError,
+  onNodeChange,
+  onWorkflowEvent,
+  inputs = {} // 🆕 支持传递用户偏好给Dify工作流
+) => {
   const filesPayload = files.map(f => ({
     type: getFileType(f.name),
     transfer_method: 'local_file',
@@ -45,7 +57,7 @@ export const streamChatMessage = async (query, conversationId, files, userId, ap
     const response = await axios.post(
       `${DIFY_API_BASE}/chat-messages`,
       {
-        inputs: {},
+        inputs: inputs || {}, // 🆕 传递用户偏好
         query: query || ' ',
         response_mode: 'streaming',
         conversation_id: conversationId,
@@ -82,6 +94,10 @@ export const streamChatMessage = async (query, conversationId, files, userId, ap
             if (data.event === 'node_started' && onNodeChange) {
               const title = data.data?.title || data.data?.node_type || 'Processing';
               onNodeChange(title);
+            }
+
+            if (onWorkflowEvent && ['workflow_started', 'node_started', 'node_finished', 'workflow_finished'].includes(data.event)) {
+              onWorkflowEvent(data);
             }
 
             if (data.event === 'message_end' || data.event === 'workflow_finished') {

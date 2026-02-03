@@ -1,71 +1,114 @@
 version: '3.8'
 
 services:
-  # MongoDB 数据库
+  # ==========================================
+  # MongoDB 数据库服务
+  # ==========================================
   mongodb:
-    image: mongo:latest
+    image: mongo:7
     container_name: procureai-mongodb
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin_password
+    restart: unless-stopped
     ports:
       - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: procureai
     volumes:
       - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
     networks:
       - procureai-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
-  # 后端服务
+  # ==========================================
+  # 后端 API 服务
+  # ==========================================
   backend:
     build:
       context: ./backend
-      dockerfile: ../Dockerfile.backend
+      dockerfile: Dockerfile
     container_name: procureai-backend
-    restart: always
-    environment:
-      - NODE_ENV=production
-      - PORT=3001
-      - MONGODB_URI=mongodb://admin:admin_password@mongodb:27017/procureai?authSource=admin
-      - JWT_SECRET=CHANGE_THIS_TO_A_VERY_STRONG_SECRET_MIN_32_CHARACTERS_LONG
-      - JWT_EXPIRE=7d
-      - DIFY_API_BASE=https://api.dify.ai/v1
-      - DIFY_API_KEY_CASUAL=app-ay5UT5TnYR83d2guU5enM4oG
-      - DIFY_API_KEY_KEYWORD=app-mHlMUk8iNbR756RPw9FkwlC2
-      - DIFY_API_KEY_DOCGEN=app-mHlMUk8iNbR756RPw9FkwlC2
-      - DIFY_API_KEY_SUPPLIER=app-mHlMUk8iNbR756RPw9FkwlC2
-      - DIFY_API_KEY_PRICE=app-mHlMUk8iNbR756RPw9FkwlC2
-      - CORS_ORIGIN=*
-      - ADMIN_EMAIL=admin@procureai.com
-      - ADMIN_PASSWORD=admin123
-      - MAX_FILE_SIZE=10485760
-      - UPLOAD_DIR=./uploads
+    restart: unless-stopped
     ports:
       - "3001:3001"
-    depends_on:
-      - mongodb
-    networks:
-      - procureai-network
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      MONGODB_URI: mongodb://admin:admin123@mongodb:27017/procureai?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-this-in-production}
+      JWT_EXPIRE: 7d
+      DIFY_API_BASE: https://api.dify.ai/v1
+      DIFY_API_KEY_CASUAL: ${DIFY_API_KEY_CASUAL}
+      DIFY_API_KEY_KEYWORD: ${DIFY_API_KEY_KEYWORD}
+      DIFY_API_KEY_DOCGEN: ${DIFY_API_KEY_DOCGEN}
+      DIFY_API_KEY_SUPPLIER: ${DIFY_API_KEY_SUPPLIER}
+      DIFY_API_KEY_PRICE: ${DIFY_API_KEY_PRICE}
+      SILICONFLOW_API_BASE: https://api.siliconflow.cn/v1
+      SILICONFLOW_API_KEY: ${SILICONFLOW_API_KEY}
+      SILICONFLOW_MODEL: Qwen/Qwen3-VL-235B-A22B-Instruct
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost}
+      ADMIN_EMAIL: admin@procureai.com
+      ADMIN_PASSWORD: admin123
+      MAX_FILE_SIZE: 10485760
+      UPLOAD_DIR: ./uploads
     volumes:
       - ./backend/uploads:/app/uploads
+    networks:
+      - procureai-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/api')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
-  # 前端服务
+  # ==========================================
+  # 前端 Web 服务
+  # ==========================================
   frontend:
     build:
       context: .
-      dockerfile: Dockerfile.frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3001/api
+        VITE_NODE_ENV: production
     container_name: procureai-frontend
-    restart: always
+    restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "80:80"
+      - "443:443"
     networks:
       - procureai-network
     depends_on:
       - backend
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+# ==========================================
+# 数据卷
+# ==========================================
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+
+# ==========================================
+# 网络
+# ==========================================
 networks:
   procureai-network:
     driver: bridge
-
-volumes:
-  mongodb_data:

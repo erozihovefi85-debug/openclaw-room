@@ -520,3 +520,24 @@ export const PackageIcon = ({ className = "w-5 h-5" }) => (
     <line x1="12" y1="22.08" x2="12" y2="12"></line>
   </svg>
 );
+
+// Additional icons for LoginPage
+export const ChartIcon = ({ className = "w-5 h-5" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M3 3v18h18"></path>
+    <path d="M18 17V9"></path>
+    <path d="M13 17V5"></path>
+    <path d="M8 17v-3"></path>
+  </svg>
+);
+
+export const NetworkIcon = ({ className = "w-5 h-5" }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="5" r="3"></circle>
+    <line x1="12" y1="8" x2="12" y2="12"></line>
+    <line x1="12" y1="12" x2="7" y2="17"></line>
+    <line x1="12" y1="12" x2="17" y2="17"></line>
+    <circle cx="7" cy="20" r="3"></circle>
+    <circle cx="17" cy="20" r="3"></circle>
+  </svg>
+);

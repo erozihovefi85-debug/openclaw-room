@@ -312,7 +312,8 @@ export async function generateRequirementListExcel(
   },
   userId: string
 ): Promise<Blob> {
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+  // 使用相对路径，由 Nginx 代理到后端
+  const API_BASE_URL = '/api';
   const token = localStorage.getItem('procureai_token');
 
   console.log('[generateRequirementListExcel] Sending data to backend:', JSON.stringify(requirementListData, null, 2));
@@ -387,7 +388,8 @@ export async function extractRequirementListWithCategory(
     confidentialityRequired?: boolean;
   };
 } | null> {
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+  // 使用相对路径，由 Nginx 代理到后端
+  const API_BASE_URL = '/api';
   const token = localStorage.getItem('procureai_token');
 
   try {
@@ -474,7 +476,8 @@ export async function generateRequirementListExcelWithTemplate(
   },
   categoryCode: string
 ): Promise<Blob> {
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+  // 使用相对路径，由 Nginx 代理到后端
+  const API_BASE_URL = '/api';
   const token = localStorage.getItem('procureai_token');
 
   console.log('[generateRequirementListExcelWithTemplate] Generating with category:', categoryCode);
@@ -557,7 +560,8 @@ export async function extractRequirementListWithSelectedCategory(
     name: string;
   };
 } | null> {
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+  // 使用相对路径，由 Nginx 代理到后端
+  const API_BASE_URL = '/api';
   const token = localStorage.getItem('procureai_token');
 
   try {
@@ -656,7 +660,8 @@ export async function parseUploadedRequirementExcel(file: File): Promise<{
     fileName: string;
   };
 } | null> {
-  const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+  // 使用相对路径，由 Nginx 代理到后端
+  const API_BASE_URL = '/api';
   const token = localStorage.getItem('procureai_token');
 
   try {

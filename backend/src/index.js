@@ -45,6 +45,10 @@ import supplierRoutes from './routes/suppliers.js';
 import productRoutes from './routes/products.js';
 import requirementListRoutes from './routes/requirementList.js';
 import procurementCategoriesRoutes from './routes/procurementCategories.js';
+import userPreferencesRoutes from './routes/userPreferences.js';
+import feedbackRoutes from './routes/feedback.js';
+import agentTaskRoutes from './routes/agentTasks.js';
+
 
 app.use('/api', apiRoutes);
 app.use('/api/auth', authRoutes);
@@ -56,6 +60,10 @@ app.use('/api/suppliers', supplierRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/requirement-list', requirementListRoutes);
 app.use('/api/procurement-categories', procurementCategoriesRoutes);
+app.use('/api/user-preferences', userPreferencesRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/agent-tasks', agentTaskRoutes);
+
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {

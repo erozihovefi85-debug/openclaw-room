@@ -31,7 +31,14 @@
       "Bash(npx tsc:*)",
       "mcp__zai-mcp-server__analyze_image",
       "Bash(python:*)",
-      "Bash(nodemon:*)"
+      "Bash(nodemon:*)",
+      "Bash(docker save:*)",
+      "Bash(docker build:*)",
+      "Bash(ls:*)",
+      "Bash(tree:*)",
+      "Bash(docker-compose:*)",
+      "mcp__zai-mcp-server__diagnose_error_screenshot",
+      "Bash(npm run type-check:*)"
     ]
   }
 }

@@ -93,6 +93,29 @@ export enum LoadingState {
   ERROR
 }
 
+export type AgentTaskStatus = 'pending' | 'running' | 'success' | 'failed';
+
+export interface AgentTaskStage {
+  key: string;
+  label: string;
+  status: AgentTaskStatus;
+  order: number;
+  startedAt?: string | number;
+  endedAt?: string | number;
+  lastNodeTitle?: string;
+  lastNodeType?: string;
+  lastNodeId?: string;
+}
+
+export interface AgentTaskState {
+  conversationId?: string;
+  contextId?: string;
+  mode?: 'casual' | 'standard';
+  stages: AgentTaskStage[];
+  currentStageKey?: string;
+  lastEventAt?: string | number;
+}
+
 // App Navigation Types
 export type AppMode = 'home' | 'casual' | 'standard' | 'user-center' | 'admin' | 'suppliers' | 'wishlist';
 
@@ -343,4 +366,119 @@ export interface ProductFormData {
   tags: string[];
   notes?: string;
   priority: ProductPriority;
+}
+
+// ==================== User Preference Types ====================
+
+export type ProcurementCategory =
+  | 'software_development'
+  | 'hardware_procurement'
+  | 'consulting_service'
+  | 'system_integration'
+  | 'general_procurement'
+  | '';
+
+export type QualityPriorityType = 'quality' | 'price' | 'balanced';
+export type ReplyStyleType = 'concise' | 'detailed' | 'professional';
+export type AIVoiceType = 'xiaomei' | 'xiaoshuai';
+
+export interface ProcurementPreferences {
+  defaultCategory: ProcurementCategory;
+  preferredSuppliers: string[];  // Supplier IDs
+  preferredPriceRange: {
+    min: number;
+    max: number;
+  };
+  deliveryLocation: string;
+  qualityPriority: {
+    type: QualityPriorityType;
+    weight: number;  // 0-1
+  };
+  paymentTerms: string;
+}
+
+export interface ChatPreferences {
+  replyStyle: {
+    type: ReplyStyleType;
+  };
+  language: string;
+  voice: AIVoiceType;
+  enableStream: boolean;
+}
+
+export interface FeaturePreferences {
+  autoSaveWishlist: boolean;
+  showPriceComparison: boolean;
+  enableNotifications: boolean;
+  darkMode: boolean;
+}
+
+export interface LearningData {
+  satisfiedQueries: Array<{
+    query: string;
+    context: string;
+    category: string;
+    timestamp: Date;
+  }>;
+  dissatisfiedQueries: Array<{
+    query: string;
+    reason: string;
+    category: string;
+    timestamp: Date;
+  }>;
+  categoryFrequency: Record<string, number>;
+  supplierFrequency: Record<string, number>;
+}
+
+export interface UserPreference {
+  userId?: string;
+  procurementPreferences: ProcurementPreferences;
+  chatPreferences: ChatPreferences;
+  featurePreferences: FeaturePreferences;
+  learningData: LearningData;
+  version: number;
+  lastAnalyzedAt?: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// ==================== Feedback Types ====================
+
+export type FeedbackReason =
+  | 'not_relevant'
+  | 'inaccurate'
+  | 'too_long'
+  | 'too_short'
+  | 'missing_info'
+  | 'other';
+
+export interface Feedback {
+  _id?: string;
+  userId: string;
+  conversationId: string;
+  messageId?: string;
+  satisfaction: number;  // 1-5 stars
+  reason?: FeedbackReason;
+  reasonText: string;
+  improvements: string;
+  aiResponseSnapshot: string;
+  querySnapshot: string;
+  context: {
+    contextId?: string;
+    category?: string;
+    mode?: string;
+  };
+  processed: boolean;
+  analysisResult?: {
+    actionTaken: string;
+    preferenceAdjustments: Record<string, any>;
+    timestamp: Date;
+  };
+  createdAt: Date;
+}
+
+export interface FeedbackStats {
+  totalFeedbacks: number;
+  avgSatisfaction: string;
+  distribution: [number, number, number, number, number];  // [1-star, 2-star, 3-star, 4-star, 5-star]
 }

@@ -6,6 +6,7 @@ import {
   HomeIcon, DocumentTextIcon, UserIcon, SettingsIcon,
   BarChartIcon, BuildingIcon, HeartIcon
 } from './Icons';
+import UserAvatar from './UserAvatar';
 
 interface SidebarProps {
   title?: string;
@@ -80,9 +81,13 @@ const Sidebar: React.FC<SidebarProps> = ({
 
         {/* New Chat Action */}
         <div className="p-4">
-          <button 
+          <button
             onClick={() => { onNew(); onClose(); }}
-            className={`w-full group flex items-center justify-center gap-2 text-white px-4 py-3 rounded-xl transition-all shadow-sm hover:shadow-md hover:-translate-y-0.5 ${title === '私人买手助理' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}
+            className={`w-full group flex items-center justify-center gap-2 text-white px-4 py-3.5 rounded-xl transition-all shadow-md hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 ${
+              title === '私人买手助理'
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
+                : 'bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700'
+            }`}
           >
             <PlusIcon className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
             <span className="font-semibold text-sm">新建对话</span>
@@ -115,10 +120,10 @@ const Sidebar: React.FC<SidebarProps> = ({
                   key={conv.id}
                   onClick={() => { onSelect(conv.id); onClose(); }}
                   className={`
-                    group relative flex items-center justify-between px-3 py-3 rounded-xl text-sm transition-all cursor-pointer border border-transparent
-                    ${isActive 
-                      ? `${activeBg} ${activeText} shadow-sm` 
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:border-slate-100'
+                    group relative flex items-center justify-between px-3 py-3 rounded-xl text-sm transition-all cursor-pointer border
+                    ${isActive
+                      ? `${activeBg} ${activeText} shadow-md scale-[1.02]`
+                      : 'text-slate-600 hover:bg-white hover:text-slate-900 hover:border-slate-200 hover:shadow-sm hover:scale-[1.01]'
                     }
                   `}
                 >
@@ -126,17 +131,18 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <MessageSquareIcon className={`w-4 h-4 shrink-0 transition-colors ${isActive ? activeIcon : 'text-slate-400 group-hover:text-slate-500'}`} />
                     <span className="truncate font-medium">{conv.name || "未命名对话"}</span>
                   </div>
-                  
+
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onDelete(conv.id);
                     }}
                     className={`
-                      p-1.5 rounded-lg transition-all z-10
-                      ${isActive 
-                        ? 'text-slate-400 hover:text-red-500 hover:bg-white' 
-                        : 'text-slate-300 hover:text-red-500 hover:bg-white group-hover:text-slate-400'
+                      p-1.5 rounded-lg transition-all z-10 opacity-0 group-hover:opacity-100
+                      ${isActive ? 'opacity-100' : ''}
+                      ${isActive
+                        ? 'text-slate-400 hover:text-red-500 hover:bg-white shadow-sm'
+                        : 'text-slate-300 hover:text-red-500 hover:bg-white hover:shadow-sm'
                       }
                     `}
                     title="删除会话"
@@ -150,21 +156,21 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-100 bg-slate-50/50 space-y-1">
+        <div className="p-3 border-t border-slate-100/80 bg-gradient-to-b from-white to-slate-50/80 space-y-1">
             <button
               onClick={onGoHome}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-sm transition-all border border-transparent hover:border-slate-200"
+              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-white hover:text-blue-600 hover:shadow-md transition-all border border-transparent hover:border-slate-200 group"
             >
-              <HomeIcon className="w-5 h-5" />
+              <HomeIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
               <span className="font-medium text-sm">返回首页</span>
             </button>
 
             {onSupplierFavorites && (
               <button
                 onClick={onSupplierFavorites}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-emerald-600 hover:bg-emerald-50 hover:shadow-sm transition-all border border-transparent hover:border-slate-200"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-emerald-600 hover:bg-gradient-to-r hover:from-emerald-50 hover:to-white hover:shadow-md transition-all border border-transparent hover:border-emerald-200 group"
               >
-                <BuildingIcon className="w-5 h-5" />
+                <BuildingIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 <span className="font-medium text-sm">供应商收藏夹</span>
               </button>
             )}
@@ -172,9 +178,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             {(title === '私家买手助理' || title === '私人买手助理') && onProductWishlist && (
               <button
                 onClick={onProductWishlist}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-pink-600 hover:bg-pink-50 hover:shadow-sm transition-all border border-transparent hover:border-slate-200"
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-pink-600 hover:bg-gradient-to-r hover:from-pink-50 hover:to-white hover:shadow-md transition-all border border-transparent hover:border-pink-200 group"
               >
-                <HeartIcon className="w-5 h-5" />
+                <HeartIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
                 <span className="font-medium text-sm">商品心愿单</span>
               </button>
             )}
@@ -182,38 +188,34 @@ const Sidebar: React.FC<SidebarProps> = ({
             {isAdmin && (
              <button
                onClick={onAdminClick}
-               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-purple-600 hover:bg-purple-50 hover:shadow-sm transition-all border border-transparent hover:border-slate-200"
+               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-purple-600 hover:bg-gradient-to-r hover:from-purple-50 hover:to-white hover:shadow-md transition-all border border-transparent hover:border-purple-200 group"
              >
-               <BarChartIcon className="w-5 h-5" />
+               <BarChartIcon className="w-5 h-5 group-hover:scale-110 transition-transform" />
                <span className="font-medium text-sm">管理后台</span>
              </button>
            )}
 
             {/* User Profile Section */}
            {user ? (
-             <div 
+             <div
                onClick={onOpenUserCenter}
-               className="w-full group flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-white hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200"
+               className="w-full group flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-white hover:shadow-md transition-all cursor-pointer border border-transparent hover:border-slate-200"
              >
-                <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 border border-blue-50">
-                  {user.avatar ? (
-                    <img src={user.avatar} className="w-full h-full rounded-full object-cover" />
-                  ) : (
-                    <UserIcon className="w-5 h-5" />
-                  )}
+                <div className="w-10 h-10 shrink-0">
+                  <UserAvatar avatarType={user.avatar || 'blue'} size="md" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-slate-800 truncate">{user.name}</p>
                   <p className="text-[10px] text-slate-400 truncate">{user.email}</p>
                 </div>
-                <div className="p-1 text-slate-300 group-hover:text-slate-500">
+                <div className="p-1.5 text-slate-300 group-hover:text-slate-500 group-hover:bg-slate-100 rounded-lg transition-all">
                   <SettingsIcon className="w-4 h-4" />
                 </div>
              </div>
            ) : (
-             <button 
+             <button
                onClick={onLoginRequest}
-               className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-all font-semibold text-sm"
+               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-blue-600 hover:bg-gradient-to-r hover:from-blue-50 hover:to-white hover:shadow-md transition-all font-semibold text-sm border border-transparent hover:border-blue-200"
              >
                <UserIcon className="w-5 h-5" />
                <span>登录账号</span>
