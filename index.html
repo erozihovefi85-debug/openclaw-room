@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>实时活动地球 - Real-time Earth Activity</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            overflow: hidden;
+            background: #000;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        #info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #fff;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        #info h1 {
+            font-size: 24px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        #info .stats {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            line-height: 1.8;
+        }
+        
+        #info .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background: #00ff88;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        
+        #controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 13px;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .btn.active {
+            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
+            border-color: transparent;
+        }
+        
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+        
+        .loader {
+            width: 60px;
+            height: 60px;
+            border: 2px solid transparent;
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        .loader-inner {
+            width: 40px;
+            height: 40px;
+            border: 2px solid transparent;
+            border-top-color: #7b2cbf;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite reverse;
+            margin: 8px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        #loading p {
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 20px;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="loader">
+            <div class="loader-inner"></div>
+        </div>
+        <p>加载地球数据中...</p>
+    </div>
+
+    <div id="info">
+        <h1>🌍 EARTH ACTIVITY</h1>
+        <div class="stats">
+            <div class="stat-item">
+                <span class="pulse-dot"></span>
+                <span>实时活动: <strong id="activity-count">0</strong></span>
+            </div>
+            <div class="stat-item">
+                <span>活跃节点: <strong id="node-count">0</strong></span>
+            </div>
+            <div class="stat-item">
+                <span>数据传输: <strong id="data-rate">0</strong> MB/s</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button class="btn active" onclick="setMode('network')">🌐 网络活动</button>
+        <button class="btn" onclick="setMode('data')">📊 数据中心</button>
+        <button class="btn" onclick="setMode('traffic')">🚀 实时流量</button>
+        <button class="btn" onclick="toggleRotation()">⏸️ 暂停旋转</button>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ============================================
+        // 实时活动地球 - Real-time Earth Activity
+        // ============================================
+        
+        let scene, camera, renderer;
+        let earth, atmosphere, stars;
+        let activityPoints = [];
+        let connectionLines = [];
+        let isRotating = true;
+        let currentMode = 'network';
+        let frameCount = 0;
+        
+        // 主要城市坐标（经纬度）
+        const cities = [
+            { name: '北京', lat: 39.9042, lon: 116.4074 },
+            { name: '上海', lat: 31.2304, lon: 121.4737 },
+            { name: '东京', lat: 35.6762, lon: 139.6503 },
+            { name: '首尔', lat: 37.5665, lon: 126.9780 },
+            { name: '新加坡', lat: 1.3521, lon: 103.8198 },
+            { name: '悉尼', lat: -33.8688, lon: 151.2093 },
+            { name: '伦敦', lat: 51.5074, lon: -0.1278 },
+            { name: '巴黎', lat: 48.8566, lon: 2.3522 },
+            { name: '柏林', lat: 52.5200, lon: 13.4050 },
+            { name: '莫斯科', lat: 55.7558, lon: 37.6173 },
+            { name: '纽约', lat: 40.7128, lon: -74.0060 },
+            { name: '旧金山', lat: 37.7749, lon: -122.4194 },
+            { name: '洛杉矶', lat: 34.0522, lon: -118.2437 },
+            { name: '芝加哥', lat: 41.8781, lon: -87.6298 },
+            { name: '多伦多', lat: 43.6532, lon: -79.3832 },
+            { name: '圣保罗', lat: -23.5505, lon: -46.6333 },
+            { name: '开罗', lat: 30.0444, lon: 31.2357 },
+            { name: '迪拜', lat: 25.2048, lon: 55.2708 },
+            { name: '孟买', lat: 19.0760, lon: 72.8777 },
+            { name: '班加罗尔', lat: 12.9716, lon: 77.5946 },
+            { name: '特拉维夫', lat: 32.0853, lon: 34.7818 },
+            { name: '约翰内斯堡', lat: -26.2041, lon: 28.0473 },
+            { name: '墨西哥城', lat: 19.4326, lon: -99.1332 },
+            { name: '温哥华', lat: 49.2827, lon: -123.1207 }
+        ];
+        
+        // 初始化场景
+        function init() {
+            const container = document.getElementById('canvas-container');
+            
+            // 创建场景
+            scene = new THREE.Scene();
+            
+            // 创建相机
+            camera = new THREE.PerspectiveCamera(
+                45,
+                window.innerWidth / window.innerHeight,
+                0.1,
+                1000
+            );
+            camera.position.z = 3.5;
+            
+            // 创建渲染器
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+            
+            // 创建星空背景
+            createStars();
+            
+            // 创建地球
+            createEarth();
+            
+            // 创建大气层
+            createAtmosphere();
+            
+            // 创建活动点
+            createActivityPoints();
+            
+            // 添加光照
+            addLighting();
+            
+            // 添加鼠标控制
+            addMouseControls();
+            
+            // 窗口大小调整
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // 隐藏加载画面
+            setTimeout(() => {
+                document.getElementById('loading').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('loading').style.display = 'none';
+                }, 500);
+            }, 1500);
+            
+            // 开始动画循环
+            animate();
+            
+            // 更新统计信息
+            updateStats();
+        }
+        
+        // 创建星空背景
+        function createStars() {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const colors = [];
+            
+            for (let i = 0; i < 3000; i++) {
+                const x = (Math.random() - 0.5) * 100;
+                const y = (Math.random() - 0.5) * 100;
+                const z = (Math.random() - 0.5) * 100;
+                vertices.push(x, y, z);
+                
+                // 星星颜色变化
+                const color = new THREE.Color();
+                color.setHSL(Math.random() * 0.2 + 0.5, 0.55, Math.random() * 0.25 + 0.55);
+                colors.push(color.r, color.g, color.b);
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            
+            const material = new THREE.PointsMaterial({
+                size: 0.05,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            stars = new THREE.Points(geometry, material);
+            scene.add(stars);
+        }
+        
+        // 创建地球纹理（使用 Canvas 生成）
+        function createEarthTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2048;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+            
+            // 深空蓝背景
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#0a1628');
+            gradient.addColorStop(0.5, '#1a3a52');
+            gradient.addColorStop(1, '#0a1628');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制大陆轮廓（简化版）
+            ctx.fillStyle = '#2d5a3d';
+            
+            // 北美洲
+            drawContinent(ctx, 300, 250, 200, 150);
+            // 南美洲
+            drawContinent(ctx, 380, 500, 120, 200);
+            // 欧洲
+            drawContinent(ctx, 950, 220, 150, 100);
+            // 非洲
+            drawContinent(ctx, 980, 400, 180, 220);
+            // 亚洲
+            drawContinent(ctx, 1300, 250, 350, 200);
+            // 澳大利亚
+            drawContinent(ctx, 1600, 550, 120, 80);
+            
+            // 添加科技网格线
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.15)';
+            ctx.lineWidth = 1;
+            
+            // 经线
+            for (let i = 0; i <= canvas.width; i += canvas.width / 36) {
+                ctx.beginPath();
+                ctx.moveTo(i, 0);
+                ctx.lineTo(i, canvas.height);
+                ctx.stroke();
+            }
+            
+            // 纬线
+            for (let i = 0; i <= canvas.height; i += canvas.height / 18) {
+                ctx.beginPath();
+                ctx.moveTo(0, i);
+                ctx.lineTo(canvas.width, i);
+                ctx.stroke();
+            }
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+        
+        // 绘制大陆
+        function drawContinent(ctx, x, y, w, h) {
+            ctx.beginPath();
+            ctx.ellipse(x, y, w/2, h/2, 0, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // 添加一些细节
+            for (let i = 0; i < 5; i++) {
+                const dx = (Math.random() - 0.5) * w * 0.8;
+                const dy = (Math.random() - 0.5) * h * 0.8;
+                const size = Math.random() * 30 + 10;
+                ctx.beginPath();
+                ctx.ellipse(x + dx, y + dy, size, size * 0.7, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+        
+        // 创建地球凹凸贴图
+        function createBumpTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制山脉/地形（亮色区域）
+            ctx.fillStyle = '#808080';
+            
+            // 各大洲的山脉
+            const mountainRanges = [
+                { x: 150, y: 125, w: 100, h: 75 }, // 北美落基山脉
+                { x: 190, y: 250, w: 60, h: 100 }, // 南美安第斯山脉
+                { x: 475, y: 110, w: 75, h: 50 }, // 欧洲阿尔卑斯
+                { x: 490, y: 200, w: 90, h: 110 }, // 非洲乞力马扎罗
+                { x: 650, y: 125, w: 175, h: 100 }, // 亚洲喜马拉雅
+                { x: 800, y: 275, w: 60, h: 40 }, // 澳大利亚
+            ];
+            
+            mountainRanges.forEach(m => {
+                const gradient = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.w);
+                gradient.addColorStop(0, '#ffffff');
+                gradient.addColorStop(0.5, '#808080');
+                gradient.addColorStop(1, '#000000');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.ellipse(m.x, m.y, m.w, m.h, 0, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            return new THREE.CanvasTexture(canvas);
+        }
+        
+        // 创建地球
+        function createEarth() {
+            const geometry = new THREE.SphereGeometry(1, 64, 64);
+            
+            const material = new THREE.MeshPhongMaterial({
+                map: createEarthTexture(),
+                bumpMap: createBumpTexture(),
+                bumpScale: 0.05,
+                specular: new THREE.Color(0x333333),
+                shininess: 5
+            });
+            
+            earth = new THREE.Mesh(geometry, material);
+            scene.add(earth);
+        }
+        
+        // 创建大气层光晕
+        function createAtmosphere() {
+            const vertexShader = `
+                varying vec3 vNormal;
+                void main() {
+                    vNormal = normalize(normalMatrix * normal);
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `;
+            
+            const fragmentShader = `
+                varying vec3 vNormal;
+                void main() {
+                    float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 4.0);
+                    gl_FragColor = vec4(0.0, 0.8, 1.0, 1.0) * intensity;
+                }
+            `;
+            
+            const geometry = new THREE.SphereGeometry(1.2, 64, 64);
+            const material = new THREE.ShaderMaterial({
+                vertexShader: vertexShader,
+                fragmentShader: fragmentShader,
+                blending: THREE.AdditiveBlending,
+                side: THREE.BackSide,
+                transparent: true
+            });
+            
+            atmosphere = new THREE.Mesh(geometry, material);
+            scene.add(atmosphere);
+        }
+        
+        // 经纬度转换为3D坐标
+        function latLonToVector3(lat, lon, radius) {
+            const phi = (90 - lat) * (Math.PI / 180);
+            const theta = (lon + 180) * (Math.PI / 180);
+            
+            const x = -(radius * Math.sin(phi) * Math.cos(theta));
+            const z = (radius * Math.sin(phi) * Math.sin(theta));
+            const y = (radius * Math.cos(phi));
+            
+            return new THREE.Vector3(x, y, z);
+        }
+        
+        // 创建活动点
+        function createActivityPoints() {
+            // 清除旧的活动点
+            activityPoints.forEach(p => {
+                scene.remove(p.mesh);
+                if (p.mesh.geometry) p.mesh.geometry.dispose();
+                if (p.mesh.material) p.mesh.material.dispose();
+            });
+            activityPoints = [];
+            
+            // 清除连接线
+            connectionLines.forEach(l => scene.remove(l));
+            connectionLines = [];
+            
+            // 为每个城市创建活动点
+            cities.forEach((city, index) => {
+                const position = latLonToVector3(city.lat, city.lon, 1.02);
+                
+                // 创建光点
+                const geometry = new THREE.SphereGeometry(0.02, 16, 16);
+                const color = getModeColor();
+                const material = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.copy(position);
+                earth.add(mesh);
+                
+                // 创建光晕效果
+                const glowGeometry = new THREE.SphereGeometry(0.04, 16, 16);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                mesh.add(glow);
+                
+                activityPoints.push({
+                    mesh: mesh,
+                    glow: glow,
+                    city: city,
+                    baseScale: 1,
+                    pulsePhase: Math.random() * Math.PI * 2,
+                    pulseSpeed: 0.5 + Math.random() * 1.5
+                });
+            });
+            
+            // 创建连接线
+            createConnections();
+        }
+        
+        // 获取当前模式的颜色
+        function getModeColor() {
+            switch(currentMode) {
+                case 'network': return 0x00ff88;
+                case 'data': return 0xff6b6b;
+                case 'traffic': return 0x00d4ff;
+                default: return 0x00ff88;
+            }
+        }
+        
+        // 创建城市间的连接线
+        function createConnections() {
+            const color = getModeColor();
+            
+            // 随机连接一些城市
+            for (let i = 0; i < cities.length; i++) {
+                const connections = 2 + Math.floor(Math.random() * 3);
+                for (let j = 0; j < connections; j++) {
+                    const targetIndex = Math.floor(Math.random() * cities.length);
+                    if (targetIndex !== i) {
+                        createConnectionLine(i, targetIndex, color);
+                    }
+                }
+            }
+        }
+        
+        // 创建两点之间的弧线连接
+        function createConnectionLine(startIdx, endIdx, color) {
+            const start = latLonToVector3(cities[startIdx].lat, cities[startIdx].lon, 1.02);
+            const end = latLonToVector3(cities[endIdx].lat, cities[endIdx].lon, 1.02);
+            
+            // 计算中点，向外延伸创建弧线
+            const mid = start.clone().add(end).multiplyScalar(0.5);
+            const midLength = mid.length();
+            mid.normalize().multiplyScalar(midLength + 0.3);
+            
+            // 创建曲线路径
+            const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+            const points = curve.getPoints(50);
+            
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const material = new THREE.LineBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.3
+            });
+            
+            const line = new THREE.Line(geometry, material);
+            earth.add(line);
+            connectionLines.push(line);
+        }
+        
+        // 添加光照
+        function addLighting() {
+            // 环境光
+            const ambientLight = new THREE.AmbientLight(0x333333);
+            scene.add(ambientLight);
+            
+            // 主光源（太阳光）
+            const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            sunLight.position.set(5, 3, 5);
+            scene.add(sunLight);
+            
+            // 补光
+            const fillLight = new THREE.DirectionalLight(0x4444ff, 0.5);
+            fillLight.position.set(-5, 0, -5);
+            scene.add(fillLight);
+        }
+        
+        // 鼠标控制
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let targetRotationX = 0;
+        let targetRotationY = 0;
+        
+        function addMouseControls() {
+            const container = document.getElementById('canvas-container');
+            
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+            
+            container.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaMove = {
+                        x: e.clientX - previousMousePosition.x,
+                        y: e.clientY - previousMousePosition.y
+                    };
+                    
+                    targetRotationY += deltaMove.x * 0.005;
+                    targetRotationX += deltaMove.y * 0.005;
+                    
+                    previousMousePosition = { x: e.clientX, y: e.clientY };
+                }
+            });
+            
+            container.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+            
+            container.addEventListener('wheel', (e) => {
+                camera.position.z += e.deltaY * 0.001;
+                camera.position.z = Math.max(1.8, Math.min(6, camera.position.z));
+            });
+        }
+        
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+            frameCount++;
+            
+            // 地球自转
+            if (isRotating && !isDragging) {
+                earth.rotation.y += 0.001;
+                targetRotationY = earth.rotation.y;
+            } else {
+                earth.rotation.y += (targetRotationY - earth.rotation.y) * 0.05;
+                earth.rotation.x += (targetRotationX - earth.rotation.x) * 0.05;
+            }
+            
+            // 星空缓慢旋转
+            stars.rotation.y += 0.0002;
+            
+            // 活动点脉冲动画
+            const time = Date.now() * 0.001;
+            activityPoints.forEach((point, index) => {
+                const scale = point.baseScale + Math.sin(time * point.pulseSpeed + point.pulsePhase) * 0.3;
+                point.mesh.scale.setScalar(Math.max(0.5, scale));
+                point.glow.scale.setScalar(1 + Math.sin(time * point.pulseSpeed + point.pulsePhase) * 0.5);
+                
+                // 随机闪烁
+                if (Math.random() < 0.02) {
+                    point.mesh.material.opacity = 0.5 + Math.random() * 0.5;
+                }
+            });
+            
+            // 连接线闪烁效果
+            connectionLines.forEach((line, index) => {
+                line.material.opacity = 0.2 + Math.sin(time * 2 + index) * 0.1;
+            });
+            
+            // 每60帧更新一次统计
+            if (frameCount % 60 === 0) {
+                updateStats();
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // 更新统计信息
+        function updateStats() {
+            const activityCount = Math.floor(1000 + Math.random() * 500);
+            const nodeCount = cities.length;
+            const dataRate = (Math.random() * 100 + 50).toFixed(1);
+            
+            document.getElementById('activity-count').textContent = activityCount.toLocaleString();
+            document.getElementById('node-count').textContent = nodeCount;
+            document.getElementById('data-rate').textContent = dataRate;
+        }
+        
+        // 窗口大小调整
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+        
+        // 切换模式
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.btn').forEach((btn, index) => {
+                if (index < 3) {
+                    btn.classList.toggle('active', 
+                        (mode === 'network' && index === 0) ||
+                        (mode === 'data' && index === 1) ||
+                        (mode === 'traffic' && index === 2)
+                    );
+                }
+            });
+            
+            // 重新创建活动点
+            createActivityPoints();
+        }
+        
+        // 切换旋转
+        function toggleRotation() {
+            isRotating = !isRotating;
+            document.querySelectorAll('.btn')[3].textContent = isRotating ? '⏸️ 暂停旋转' : '▶️ 开始旋转';
+        }
+        
+        // 启动
+        init();
+    </script>
+</body>
+</html>
