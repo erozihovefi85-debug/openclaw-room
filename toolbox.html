@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenClaw 创意工具箱</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        * { font-family: 'Noto Sans SC', sans-serif; }
+        
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --accent: #f093fb;
+        }
+        
+        body {
+            overflow-x: hidden;
+        }
+        
+        /* 侧边栏 */
+        .sidebar {
+            transition: transform 0.3s ease, width 0.3s ease;
+        }
+        
+        .sidebar.collapsed {
+            width: 70px;
+        }
+        
+        .sidebar.collapsed .nav-text {
+            display: none;
+        }
+        
+        /* 主内容区 */
+        .main-content {
+            transition: margin-left 0.3s ease;
+        }
+        
+        /* 页面切换 */
+        .page-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .page-section.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 动画效果 */
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        .animate-pulse-slow {
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* 按钮效果 */
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+        
+        /* 卡片效果 */
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* 地球样式 */
+        #earth-container {
+            width: 100%;
+            height: 500px;
+            position: relative;
+        }
+        
+        /* 抽奖转盘 */
+        .wheel-container {
+            position: relative;
+            width: 350px;
+            height: 350px;
+            margin: 0 auto;
+        }
+        
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+        
+        .wheel-pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 30px;
+            height: 40px;
+            background: linear-gradient(to bottom, #ff4444, #cc0000);
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+            z-index: 10;
+        }
+        
+        .wheel-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            border-radius: 50%;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+        
+        .wheel-center:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+        
+        /* 任务项 */
+        .todo-item {
+            transition: all 0.3s ease;
+        }
+        
+        .todo-item:hover {
+            background-color: #f9fafb;
+        }
+        
+        .todo-item.completed .todo-text {
+            text-decoration: line-through;
+            color: #9ca3af;
+        }
+        
+        /* 结果弹窗 */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 500px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+        
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+        
+        /* 彩带 */
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            z-index: 9999;
+            animation: confetti-fall 3s ease-out forwards;
+        }
+        
+        @keyframes confetti-fall {
+            0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                z-index: 100;
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            
+            .main-content {
+                margin-left: 0 !important;
+            }
+            
+            .wheel-container {
+                width: 280px;
+                height: 280px;
+            }
+        }
+        
+        /* 滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 移动端遮罩 -->
+    <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden" onclick="toggleSidebar()"></div>
+
+    <!-- 侧边栏 -->
+    <aside id="sidebar" class="sidebar fixed left-0 top-0 h-full w-64 bg-white shadow-xl z-50 flex flex-col">
+        <!-- Logo -->
+        <div class="p-6 border-b">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                    <i class="fas fa-toolbox text-white"></i>
+                </div>
+                <div class="nav-text">
+                    <div class="font-bold text-lg text-gray-800">创意工具箱</div>
+                    <div class="text-xs text-gray-500">OpenClaw</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 导航菜单 -->
+        <nav class="flex-1 overflow-y-auto py-4">
+            <div class="px-4 mb-2 text-xs font-semibold text-gray-400 uppercase nav-text">工具</div>
+            
+            <a href="#" onclick="showPage('home')" data-page="home" class="nav-item flex items-center px-4 py-3 mx-2 rounded-xl text-gray-600 hover:bg-gray-100 transition">
+                <i class="fas fa-home w-6 text-center"></i>
+                <span class="nav-text ml-3">首页</span>
+            </a>
+            
+            <a href="#" onclick="showPage('earth')" data-page="earth" class="nav-item flex items-center px-4 py-3 mx-2 rounded-xl text-gray-600 hover:bg-gray-100 transition">
+                <i class="fas fa-globe w-6 text-center"></i>
+                <span class="nav-text ml-3">3D地球</span>
+            </a>
+            
+            <a href="#" onclick="showPage('lottery')" data-page="lottery" class="nav-item flex items-center px-4 py-3 mx-2 rounded-xl text-gray-600 hover:bg-gray-100 transition">
+                <i class="fas fa-dice w-6 text-center"></i>
+                <span class="nav-text ml-3">抽奖中心</span>
+            </a>
+            
+            <a href="#" onclick="showPage('report')" data-page="report" class="nav-item flex items-center px-4 py-3 mx-2 rounded-xl text-gray-600 hover:bg-gray-100 transition">
+                <i class="fas fa-file-alt w-6 text-center"></i>
+                <span class="nav-text ml-3">汇报生成</span>
+            </a>
+            
+            <a href="#" onclick="showPage('todo')" data-page="todo" class="nav-item flex items-center px-4 py-3 mx-2 rounded-xl text-gray-600 hover:bg-gray-100 transition">
+                <i class="fas fa-check-square w-6 text-center"></i>
+                <span class="nav-text ml-3">任务清单</span>
+            </a>
+            
+            <div class="px-4 mt-6 mb-2 text-xs font-semibold text-gray-400 uppercase nav-text">系统</div>
+            
+            <a href="#" onclick="showPage('settings')" data-page="settings" class="nav-item flex items-center px-4 py-3 mx-2 rounded-xl text-gray-600 hover:bg-gray-100 transition">
+                <i class="fas fa-cog w-6 text-center"></i>
+                <span class="nav-text ml-3">设置</span>
+            </a>
+        </nav>
+
+        <!-- 底部折叠按钮 -->
+        <div class="p-4 border-t hidden lg:block">
+            <button onclick="toggleSidebarCollapse()" class="w-full flex items-center justify-center p-2 rounded-lg hover:bg-gray-100 transition">
+                <i id="collapse-icon" class="fas fa-chevron-left text-gray-400"></i>
+            </button>
+        </div>
+    </aside>
+
+    <!-- 主内容区 -->
+    <main id="main-content" class="main-content lg:ml-64 min-h-screen">
+        <!-- 顶部栏 -->
+        <header class="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b px-6 py-4">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center">
+                    <button onclick="toggleSidebar()" class="lg:hidden mr-4 p-2 rounded-lg hover:bg-gray-100">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <h1 id="page-title" class="text-xl font-bold text-gray-800">首页</h1>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div id="current-time" class="text-sm text-gray-500 hidden md:block"></div>
+                    <button onclick="toggleTheme()" class="p-2 rounded-lg hover:bg-gray-100 transition">
+                        <i id="theme-icon" class="fas fa-moon text-gray-600"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 页面内容 -->
+        <div class="p-6">
+            
+            <!-- 首页 -->
+            <section id="page-home" class="page-section active">
+                <div class="max-w-6xl mx-auto">
+                    <!-- 欢迎卡片 -->
+                    <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-8 text-white mb-8">
+                        <div class="flex flex-col md:flex-row items-center justify-between">
+                            <div class="mb-6 md:mb-0">
+                                <h2 class="text-3xl font-bold mb-2">欢迎回来！👋</h2>
+                                <p class="opacity-90">今天你想使用什么工具？</p>
+                            </div>
+                            <div class="text-6xl animate-float">🚀</div>
+                        </div>
+                    </div>
+
+                    <!-- 快捷入口 -->
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">快捷入口</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                        <div onclick="showPage('lottery')" class="bg-white rounded-xl p-6 shadow-sm card-hover cursor-pointer">
+                            <div class="w-12 h-12 rounded-xl bg-orange-100 flex items-center justify-center mb-4">
+                                <i class="fas fa-dice text-2xl text-orange-500"></i>
+                            </div>
+                            <h4 class="font-bold text-gray-800">开始抽奖</h4>
+                            <p class="text-sm text-gray-500 mt-1">立即开始一场抽奖活动</p>
+                        </div>
+                        
+                        <div onclick="showPage('report')" class="bg-white rounded-xl p-6 shadow-sm card-hover cursor-pointer">
+                            <div class="w-12 h-12 rounded-xl bg-teal-100 flex items-center justify-center mb-4">
+                                <i class="fas fa-file-alt text-2xl text-teal-500"></i>
+                            </div>
+                            <h4 class="font-bold text-gray-800">生成汇报</h4>
+                            <p class="text-sm text-gray-500 mt-1">将文本转为精美汇报</p>
+                        </div>
+                        
+                        <div onclick="showPage('earth')" class="bg-white rounded-xl p-6 shadow-sm card-hover cursor-pointer">
+                            <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center mb-4">
+                                <i class="fas fa-globe text-2xl text-blue-500"></i>
+                            </div>
+                            <h4 class="font-bold text-gray-800">3D地球</h4>
+                            <p class="text-sm text-gray-500 mt-1">查看实时数据可视化</p>
+                        </div>
+                        
+                        <div onclick="showPage('todo')" class="bg-white rounded-xl p-6 shadow-sm card-hover cursor-pointer">
+                            <div class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center mb-4">
+                                <i class="fas fa-check-square text-2xl text-green-500"></i>
+                            </div>
+                            <h4 class="font-bold text-gray-800">任务清单</h4>
+                            <p class="text-sm text-gray-500 mt-1">管理待办事项</p>
+                        </div>
+                    </div>
+
+                    <!-- 统计概览 -->
+                    <h3 class="text-lg font-bold text-gray-800 mb-4">数据统计</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-white rounded-xl p-6 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-500">抽奖次数</p>
+                                    <p id="stat-lottery-count" class="text-2xl font-bold text-gray-800">0</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
+                                    <i class="fas fa-dice text-orange-500"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl p-6 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-500">待办任务</p>
+                                    <p id="stat-todo-count" class="text-2xl font-bold text-gray-800">0</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center">
+                                    <i class="fas fa-tasks text-green-500"></i>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-white rounded-xl p-6 shadow-sm">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-gray-500">生成汇报</p>
+                                    <p id="stat-report-count" class="text-2xl font-bold text-gray-800">0</p>
+                                </div>
+                                <div class="w-12 h-12 rounded-full bg-teal-100 flex items-center justify-center">
+                                    <i class="fas fa-file-alt text-teal-500"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3D地球页面 -->
+            <section id="page-earth" class="page-section">
+                <div class="max-w-6xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                        <div class="p-4 border-b flex flex-wrap gap-2">
+                            <button onclick="setEarthMode('network')" id="btn-network" class="px-4 py-2 rounded-lg bg-indigo-500 text-white text-sm font-medium transition">🌐 网络活动</button>
+                            <button onclick="setEarthMode('data')" id="btn-data" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-medium transition hover:bg-gray-300">📊 数据中心</button>
+                            <button onclick="setEarthMode('traffic')" id="btn-traffic" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-medium transition hover:bg-gray-300">🚀 实时流量</button>
+                            <button onclick="toggleEarthRotation()" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm font-medium transition hover:bg-gray-300 ml-auto">⏸️ 暂停</button>
+                        </div>
+                        
+                        <div id="earth-container"></div>
+                        
+                        <div class="p-4 bg-gray-50 flex flex-wrap gap-4 text-sm text-gray-600">
+                            <span><i class="fas fa-mouse mr-1"></i>拖拽旋转</span>
+                            <span><i class="fas fa-search-plus mr-1"></i>滚轮缩放</span>
+                            <span class="ml-auto"><i class="fas fa-circle text-green-500 mr-1"></i>实时更新</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 抽奖中心页面 -->
+            <section id="page-lottery" class="page-section">
+                <div class="max-w-6xl mx-auto">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <!-- 左侧：抽奖区 -->
+                        <div class="lg:col-span-2">
+                            <div class="bg-white rounded-2xl shadow-lg p-6">
+                                <div class="flex justify-between items-center mb-6">
+                                    <h3 id="lottery-title" class="text-xl font-bold text-gray-800">🎲 抽奖活动</h3>
+                                    <select id="lottery-template" onchange="loadLotteryTemplate(this.value)" class="px-3 py-2 border rounded-lg text-sm">
+                                        <option value="company">🏢 公司年会</option>
+                                        <option value="family">👨‍👩‍👧‍👦 家庭聚会</option>
+                                        <option value="food">🍜 今天吃什么</option>
+                                        <option value="custom">✨ 自定义</option>
+                                    </select>
+                                </div>
+
+                                <!-- 转盘 -->
+                                <div id="lottery-wheel" class="wheel-container mb-6">
+                                    <div class="wheel-pointer"></div>
+                                    <div id="wheel" class="wheel"></div>
+                                    <div class="wheel-center" onclick="startLottery()">
+                                        <i class="fas fa-play text-white"></i>
+                                    </div>
+                                </div>
+
+                                <div class="text-center">
+                                    <button onclick="startLottery()" id="btn-start-lottery" class="btn-primary text-white px-8 py-3 rounded-xl font-bold">
+                                        <i class="fas fa-play mr-2"></i>开始抽奖
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 右侧：配置区 -->
+                        <div class="space-y-6">
+                            <div class="bg-white rounded-2xl shadow-lg p-6">
+                                <h4 class="font-bold text-gray-800 mb-4"><i class="fas fa-cog mr-2"></i>奖品设置</h4>
+                                
+                                <div id="lottery-prizes" class="space-y-3 max-h-64 overflow-y-auto">
+                                    <!-- 动态生成 -->
+                                </div>
+                                
+                                <button onclick="addLotteryPrize()" class="w-full mt-4 py-2 border-2 border-dashed border-gray-300 rounded-lg text-gray-500 hover:border-indigo-500 hover:text-indigo-500 transition">
+                                    <i class="fas fa-plus mr-2"></i>添加奖品
+                                </button>
+                            </div>
+
+                            <div class="bg-white rounded-2xl shadow-lg p-6">
+                                <h4 class="font-bold text-gray-800 mb-4"><i class="fas fa-history mr-2"></i>中奖记录</h4>
+                                
+                                <div id="lottery-history" class="space-y-2 max-h-48 overflow-y-auto text-sm">
+                                    <div class="text-gray-400 text-center py-4">暂无记录</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 汇报生成页面 -->
+            <section id="page-report" class="page-section">
+                <div class="max-w-6xl mx-auto">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- 输入区 -->
+                        <div class="bg-white rounded-2xl shadow-lg p-6">
+                            <h4 class="font-bold text-gray-800 mb-4"><i class="fas fa-edit mr-2"></i>输入方案文本</h4>
+                            
+                            <textarea id="report-input" class="w-full h-64 p-4 border rounded-xl resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent" placeholder="请粘贴您的AI转型方案文本...
+
+建议包含：
+• 项目背景与目标
+• 现状分析
+• AI应用场景
+• 实施计划与时间表
+• 预期收益与ROI
+• 风险评估"></textarea>
+                            
+                            <div class="flex gap-3 mt-4">
+                                <button onclick="loadReportExample()" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800">加载示例</button>
+                                <button onclick="clearReportInput()" class="px-4 py-2 text-sm text-red-500 hover:text-red-700">清空</button>
+                                <button onclick="generateReport()" class="btn-primary text-white px-6 py-2 rounded-lg ml-auto">
+                                    <i class="fas fa-magic mr-2"></i>生成汇报
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- 预览区 -->
+                        <div class="bg-white rounded-2xl shadow-lg p-6">
+                            <h4 class="font-bold text-gray-800 mb-4"><i class="fas fa-eye mr-2"></i>预览</h4>
+                            
+                            <div id="report-preview" class="h-64 bg-gray-50 rounded-xl p-4 overflow-y-auto">
+                                <div class="text-gray-400 text-center py-12"><i class="fas fa-file-alt text-4xl mb-2"></i><br>生成后在此预览</div>
+                            </div>
+                            
+                            <div class="flex gap-3 mt-4">
+                                <select id="report-template" class="px-3 py-2 border rounded-lg text-sm">
+                                    <option value="modern">现代商务</option>
+                                    <option value="tech">科技感</option>
+                                    <option value="minimal">极简主义</option>
+                                </select>
+                                
+                                <button onclick="downloadReport()" id="btn-download-report" class="bg-gray-200 text-gray-400 px-6 py-2 rounded-lg ml-auto cursor-not-allowed" disabled>
+                                    <i class="fas fa-download mr-2"></i>下载HTML
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 任务清单页面 -->
+            <section id="page-todo" class="page-section">
+                <div class="max-w-3xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <!-- 输入 -->
+                        <div class="flex gap-3 mb-6">
+                            <input type="text" id="todo-input" placeholder="添加新任务..." 
+                                   class="flex-1 px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                   onkeypress="if(event.key==='Enter') addTodo()">
+                            <button onclick="addTodo()" class="btn-primary text-white px-6 py-3 rounded-xl">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+
+                        <!-- 筛选 -->
+                        <div class="flex gap-2 mb-4">
+                            <button onclick="filterTodos('all')" id="filter-all" class="px-4 py-2 rounded-lg bg-indigo-500 text-white text-sm transition">全部</button>
+                            <button onclick="filterTodos('active')" id="filter-active" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm transition hover:bg-gray-300">未完成</button>
+                            <button onclick="filterTodos('completed')" id="filter-completed" class="px-4 py-2 rounded-lg bg-gray-200 text-gray-700 text-sm transition hover:bg-gray-300">已完成</button>
+                            <button onclick="clearCompletedTodos()" class="px-4 py-2 rounded-lg text-red-500 text-sm hover:bg-red-50 ml-auto transition">清除已完成</button>
+                        </div>
+
+                        <!-- 列表 -->
+                        <div id="todo-list" class="space-y-2">
+                            <!-- 动态生成 -->
+                        </div>
+
+                        <!-- 统计 -->
+                        <div class="mt-6 pt-4 border-t flex justify-between text-sm text-gray-500">
+                            <span id="todo-stats">0 个任务</span>
+                            <span id="todo-progress">完成度: 0%</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 设置页面 -->
+            <section id="page-settings" class="page-section">
+                <div class="max-w-2xl mx-auto">
+                    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                        <h4 class="font-bold text-gray-800 mb-6"><i class="fas fa-palette mr-2"></i>外观设置</h4>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="font-medium">深色模式</p>
+                                    <p class="text-sm text-gray-500">切换应用的主题颜色</p>
+                                </div>
+                                <button onclick="toggleDarkMode()" id="btn-dark-mode" class="w-14 h-7 rounded-full bg-gray-300 relative transition">
+                                    <div class="w-5 h-5 bg-white rounded-full absolute top-1 left-1 transition"></div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-lg p-6 mb-6">
+                        <h4 class="font-bold text-gray-800 mb-6"><i class="fas fa-database mr-2"></i>数据管理</h4>
+                        
+                        <div class="space-y-4">
+                            <button onclick="exportData()" class="w-full flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition">
+                                <div class="flex items-center">
+                                    <i class="fas fa-download text-indigo-500 mr-3"></i>
+                                    <div>
+                                        <p class="font-medium">导出数据</p>
+                                        <p class="text-sm text-gray-500">将所有数据导出为JSON文件</p>
+                                    </div>
+                                </div>
+                                <i class="fas fa-chevron-right text-gray-400"></i>
+                            </button>
+                            
+                            <label class="w-full flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition cursor-pointer">
+                                <div class="flex items-center">
+                                    <i class="fas fa-upload text-green-500 mr-3"></i>
+                                    <div>
+                                        <p class="font-medium">导入数据</p>
+                                        <p class="text-sm text-gray-500">从JSON文件恢复数据</p>
+                                    </div>
+                                </div>
+                                <i class="fas fa-chevron-right text-gray-400"></i>
+                                <input type="file" accept=".json" onchange="importData(this)" class="hidden">
+                            </label>
+                            
+                            <button onclick="resetAllData()" class="w-full flex items-center justify-between p-4 border border-red-200 rounded-xl hover:bg-red-50 transition">
+                                <div class="flex items-center">
+                                    <i class="fas fa-trash-alt text-red-500 mr-3"></i>
+                                    <div>
+                                        <p class="font-medium text-red-600">重置所有数据</p>
+                                        <p class="text-sm text-red-400">清除所有本地存储的数据</p>
+                                    </div>
+                                </div>
+                                <i class="fas fa-chevron-right text-red-400"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl shadow-lg p-6">
+                        <h4 class="font-bold text-gray-800 mb-6"><i class="fas fa-info-circle mr-2"></i>关于</h4>
+                        
+                        <div class="text-center py-4">
+                            <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                                <i class="fas fa-toolbox text-3xl text-white"></i>
+                            </div>
+                            <h5 class="font-bold text-lg">OpenClaw 创意工具箱</h5>
+                            <p class="text-sm text-gray-500 mt-1">版本 1.0.0</p>
+                            <p class="text-sm text-gray-400 mt-4">使用 OpenClaw + Kimi K2.5 开发</p>
+                            <p class="text-xs text-gray-400 mt-2">© 2026 All rights reserved.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 结果弹窗 -->
+    <div id="result-modal" class="modal-overlay">
+        <div class="modal-content text-center">
+            <div class="text-6xl mb-4">🎉</div>
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">恭喜中奖！</h3>
+            <p id="result-text" class="text-xl text-indigo-600 font-bold mb-6">奖品名称</p>
+            <div class="flex gap-3 justify-center">
+                <button onclick="closeModal()" class="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition">关闭</button>
+                <button onclick="closeModal(); startLottery();" class="px-6 py-2 btn-primary text-white rounded-lg">再抽一次</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== 全局状态 ====================
+        let currentPage = 'home';
+        let darkMode = false;
+        let sidebarCollapsed = false;
+        let isDrawing = false;
+        let currentRotation = 0;
+        let earthScene, earthCamera, earthRenderer, earthMesh;
+        let isRotating = true;
+        let earthMode = 'network';
+
+        // 数据存储
+        const storage = {
+            get: (key) => JSON.parse(localStorage.getItem('oct_' + key) || 'null'),
+            set: (key, value) => localStorage.setItem('oct_' + key, JSON.stringify(value)),
+            remove: (key) => localStorage.removeItem('oct_' + key)
+        };
+
+        // ==================== 初始化 ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            initSidebar();
+            updateTime();
+            setInterval(updateTime, 1000);
+            loadTodos();
+            loadLotteryHistory();
+            initLottery();
+            updateStats();
+        });
+
+        // ==================== 导航 ====================
+        function showPage(page) {
+            currentPage = page;
+            
+            // 隐藏所有页面
+            document.querySelectorAll('.page-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            
+            // 显示目标页面
+            document.getElementById('page-' + page).classList.add('active');
+            
+            // 更新导航高亮
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('bg-indigo-50', 'text-indigo-600');
+                if (item.dataset.page === page) {
+                    item.classList.add('bg-indigo-50', 'text-indigo-600');
+                }
+            });
+            
+            // 更新标题
+            const titles = {
+                home: '首页',
+                earth: '3D地球',
+                lottery: '抽奖中心',
+                report: '汇报生成',
+                todo: '任务清单',
+                settings: '设置'
+            };
+            document.getElementById('page-title').textContent = titles[page] || '首页';
+            
+            // 关闭移动端侧边栏
+            if (window.innerWidth < 1024) {
+                document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('mobile-overlay').classList.add('hidden');
+            }
+            
+            // 特殊处理
+            if (page === 'earth') {
+                setTimeout(initEarth, 100);
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            
+            if (window.innerWidth >= 1024) {
+                toggleSidebarCollapse();
+            } else {
+                sidebar.classList.toggle('open');
+                overlay.classList.toggle('hidden');
+            }
+        }
+
+        function toggleSidebarCollapse() {
+            sidebarCollapsed = !sidebarCollapsed;
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+            const icon = document.getElementById('collapse-icon');
+            
+            if (sidebarCollapsed) {
+                sidebar.classList.add('collapsed');
+                mainContent.style.marginLeft = '70px';
+                icon.classList.replace('fa-chevron-left', 'fa-chevron-right');
+            } else {
+                sidebar.classList.remove('collapsed');
+                mainContent.style.marginLeft = '';
+                icon.classList.replace('fa-chevron-right', 'fa-chevron-left');
+            }
+        }
+
+        function initSidebar() {
+            // 设置当前页面
+            showPage('home');
+        }
+
+        // ==================== 时间 ====================
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            const dateStr = now.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', weekday: 'short' });
+            document.getElementById('current-time').textContent = `${dateStr} ${timeStr}`;
+        }
+
+        // ==================== 主题 ====================
+        function toggleTheme() {
+            darkMode = !darkMode;
+            document.body.classList.toggle('dark', darkMode);
+            const icon = document.getElementById('theme-icon');
+            icon.classList.toggle('fa-moon', !darkMode);
+            icon.classList.toggle('fa-sun', darkMode);
+        }
+
+        function toggleDarkMode() {
+            toggleTheme();
+            const btn = document.getElementById('btn-dark-mode');
+            const dot = btn.querySelector('div');
+            
+            if (darkMode) {
+                btn.classList.replace('bg-gray-300', 'bg-indigo-500');
+                dot.style.transform = 'translateX(28px)';
+            } else {
+                btn.classList.replace('bg-indigo-500', 'bg-gray-300');
+                dot.style.transform = 'translateX(0)';
+            }
+        }
+
+        // ==================== 统计 ====================
+        function updateStats() {
+            const todos = storage.get('todos') || [];
+            const history = storage.get('lottery_history') || [];
+            
+            document.getElementById('stat-todo-count').textContent = todos.filter(t => !t.completed).length;
+            document.getElementById('stat-lottery-count').textContent = history.length;
+            
+            // 汇报数量从localStorage统计
+            const reportCount = parseInt(localStorage.getItem('oct_report_count') || '0');
+            document.getElementById('stat-report-count').textContent = reportCount;
+        }
+
+        // ==================== 任务清单 ====================
+        let todos = [];
+        let todoFilter = 'all';
+
+        function loadTodos() {
+            todos = storage.get('todos') || [];
+            renderTodos();
+            updateStats();
+        }
+
+        function renderTodos() {
+            const container = document.getElementById('todo-list');
+            const filtered = todos.filter(t => {
+                if (todoFilter === 'active') return !t.completed;
+                if (todoFilter === 'completed') return t.completed;
+                return true;
+            });
+            
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="fas fa-clipboard-list text-4xl mb-2"></i><br>
+                        ${todoFilter === 'completed' ? '还没有已完成的任务' : '暂无任务，添加一个吧！'}
+                    </div>
+                `;
+            } else {
+                container.innerHTML = filtered.map(todo => `
+                    <div class="todo-item flex items-center gap-3 p-3 rounded-xl ${todo.completed ? 'completed' : ''}">
+                        <button onclick="toggleTodo('${todo.id}')" 
+                                class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition ${todo.completed ? 'bg-green-500 border-green-500' : 'border-gray-300 hover:border-indigo-500'}">
+                            ${todo.completed ? '<i class="fas fa-check text-white text-xs"></i>' : ''}
+                        </button>
+                        <span class="todo-text flex-1 ${todo.completed ? 'line-through text-gray-400' : 'text-gray-700'}">${escapeHtml(todo.text)}</span>
+                        
+                        <button onclick="deleteTodo('${todo.id}')" class="text-gray-400 hover:text-red-500 transition">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+            
+            // 更新统计
+            const total = todos.length;
+            const completed = todos.filter(t => t.completed).length;
+            const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+            
+            document.getElementById('todo-stats').textContent = `${total} 个任务，${completed} 个已完成`;
+            document.getElementById('todo-progress').textContent = `完成度: ${progress}%`;
+            
+            updateStats();
+        }
+
+        function addTodo() {
+            const input = document.getElementById('todo-input');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            todos.push({
+                id: Date.now().toString(),
+                text: text,
+                completed: false,
+                createdAt: new Date().toISOString()
+            });
+            
+            storage.set('todos', todos);
+            input.value = '';
+            renderTodos();
+        }
+
+        function toggleTodo(id) {
+            const todo = todos.find(t => t.id === id);
+            if (todo) {
+                todo.completed = !todo.completed;
+                storage.set('todos', todos);
+                renderTodos();
+            }
+        }
+
+        function deleteTodo(id) {
+            todos = todos.filter(t => t.id !== id);
+            storage.set('todos', todos);
+            renderTodos();
+        }
+
+        function filterTodos(filter) {
+            todoFilter = filter;
+            
+            // 更新按钮状态
+            ['all', 'active', 'completed'].forEach(f => {
+                const btn = document.getElementById('filter-' + f);
+                if (f === filter) {
+                    btn.classList.remove('bg-gray-200', 'text-gray-700');
+                    btn.classList.add('bg-indigo-500', 'text-white');
+                } else {
+                    btn.classList.remove('bg-indigo-500', 'text-white');
+                    btn.classList.add('bg-gray-200', 'text-gray-700');
+                }
+            });
+            
+            renderTodos();
+        }
+
+        function clearCompletedTodos() {
+            const completedCount = todos.filter(t => t.completed).length;
+            if (completedCount === 0) return;
+            
+            if (confirm(`确定要清除 ${completedCount} 个已完成的任务吗？`)) {
+                todos = todos.filter(t => !t.completed);
+                storage.set('todos', todos);
+                renderTodos();
+            }
+        }
+
+        // ==================== 抽奖系统 ====================
+        let lotteryConfig = {
+            prizes: [
+                { name: '🥇 一等奖', probability: 5, color: '#FFD700' },
+                { name: '🥈 二等奖', probability: 10, color: '#C0C0C0' },
+                { name: '🥉 三等奖', probability: 15, color: '#CD7F32' },
+                { name: '🎁 参与奖', probability: 70, color: '#4ECDC4' }
+            ]
+        };
+
+        const lotteryTemplates = {
+            company: {
+                prizes: [
+                    { name: '🥇 iPhone 16', probability: 2, color: '#FFD700' },
+                    { name: '🥈 iPad Air', probability: 5, color: '#C0C0C0' },
+                    { name: '🥉 AirPods', probability: 8, color: '#CD7F32' },
+                    { name: '🎁 购物卡500元', probability: 15, color: '#FF6B6B' },
+                    { name: '🧧 红包200元', probability: 30, color: '#4ECDC4' },
+                    { name: '🍀 纪念品', probability: 40, color: '#95E1D3' }
+                ]
+            },
+            family: {
+                prizes: [
+                    { name: '🧧 大红包888', probability: 5, color: '#FF4757' },
+                    { name: '🧧 中红包188', probability: 15, color: '#FF6348' },
+                    { name: '🧧 小红包66', probability: 30, color: '#FFA502' },
+                    { name: '🎮 游戏时间', probability: 25, color: '#7BED9F' },
+                    { name: '🎤 才艺表演', probability: 25, color: '#70A1FF' }
+                ]
+            },
+            food: {
+                prizes: [
+                    { name: '🍜 火锅', probability: 20, color: '#FF6B6B' },
+                    { name: '🍕 披萨', probability: 15, color: '#FDCB6E' },
+                    { name: '🍱 日料', probability: 15, color: '#6C5CE7' },
+                    { name: '🍔 汉堡', probability: 15, color: '#FD79A8' },
+                    { name: '🥗 轻食', probability: 15, color: '#00B894' },
+                    { name: '🍚 中餐', probability: 20, color: '#E17055' }
+                ]
+            },
+            custom: {
+                prizes: [
+                    { name: '奖品 1', probability: 50, color: '#FF6B6B' },
+                    { name: '奖品 2', probability: 50, color: '#4ECDC4' }
+                ]
+            }
+        };
+
+        function initLottery() {
+            const saved = storage.get('lottery_config');
+            if (saved) {
+                lotteryConfig = saved;
+            }
+            renderLotteryPrizes();
+            renderWheel();
+        }
+
+        function renderLotteryPrizes() {
+            const container = document.getElementById('lottery-prizes');
+            container.innerHTML = lotteryConfig.prizes.map((prize, index) => `
+                <div class="flex items-center gap-2 p-2 bg-gray-50 rounded-lg">
+                    <input type="color" value="${prize.color}" 
+                           onchange="updatePrizeColor(${index}, this.value)"
+                           class="w-8 h-8 rounded cursor-pointer">
+                    <input type="text" value="${prize.name}" 
+                           onchange="updatePrizeName(${index}, this.value)"
+                           class="flex-1 px-2 py-1 text-sm border rounded">
+                    <input type="number" value="${prize.probability}" min="1" max="100"
+                           onchange="updatePrizeProb(${index}, this.value)"
+                           class="w-16 px-2 py-1 text-sm border rounded text-center">%
+                    
+                    <button onclick="removePrize(${index})" class="text-gray-400 hover:text-red-500">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function renderWheel() {
+            const wheel = document.getElementById('wheel');
+            wheel.innerHTML = '';
+            
+            const totalProb = lotteryConfig.prizes.reduce((sum, p) => sum + p.probability, 0);
+            let currentAngle = 0;
+            
+            lotteryConfig.prizes.forEach((prize, index) => {
+                const angle = (prize.probability / totalProb) * 360;
+                const segment = document.createElement('div');
+                segment.style.cssText = `
+                    position: absolute;
+                    width: 50%;
+                    height: 50%;
+                    left: 50%;
+                    top: 0;
+                    transform-origin: left bottom;
+                    transform: rotate(${currentAngle}deg);
+                    background: ${prize.color};
+                    clip-path: polygon(0 0, 100% 0, 100% 100%);
+                `;
+                
+                const label = document.createElement('div');
+                label.style.cssText = `
+                    position: absolute;
+                    left: 30%;
+                    top: 20%;
+                    transform: rotate(${angle / 2}deg) translateX(10px);
+                    font-size: 12px;
+                    font-weight: bold;
+                    color: white;
+                    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+                    white-space: nowrap;
+                `;
+                label.textContent = prize.name;
+                segment.appendChild(label);
+                
+                wheel.appendChild(segment);
+                currentAngle += angle;
+            });
+        }
+
+        function loadLotteryTemplate(templateName) {
+            lotteryConfig.prizes = JSON.parse(JSON.stringify(lotteryTemplates[templateName].prizes));
+            storage.set('lottery_config', lotteryConfig);
+            renderLotteryPrizes();
+            renderWheel();
+        }
+
+        function updatePrizeColor(index, color) {
+            lotteryConfig.prizes[index].color = color;
+            storage.set('lottery_config', lotteryConfig);
+            renderWheel();
+        }
+
+        function updatePrizeName(index, name) {
+            lotteryConfig.prizes[index].name = name;
+            storage.set('lottery_config', lotteryConfig);
+            renderWheel();
+        }
+
+        function updatePrizeProb(index, prob) {
+            lotteryConfig.prizes[index].probability = parseInt(prob) || 1;
+            storage.set('lottery_config', lotteryConfig);
+            renderWheel();
+        }
+
+        function addLotteryPrize() {
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3'];
+            lotteryConfig.prizes.push({
+                name: `奖品 ${lotteryConfig.prizes.length + 1}`,
+                probability: 10,
+                color: colors[lotteryConfig.prizes.length % colors.length]
+            });
+            storage.set('lottery_config', lotteryConfig);
+            renderLotteryPrizes();
+            renderWheel();
+        }
+
+        function removePrize(index) {
+            if (lotteryConfig.prizes.length <= 2) {
+                alert('至少需要保留2个奖品');
+                return;
+            }
+            lotteryConfig.prizes.splice(index, 1);
+            storage.set('lottery_config', lotteryConfig);
+            renderLotteryPrizes();
+            renderWheel();
+        }
+
+        function startLottery() {
+            if (isDrawing) return;
+            
+            isDrawing = true;
+            const wheel = document.getElementById('wheel');
+            const btn = document.getElementById('btn-start-lottery');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>抽奖中...';
+            
+            // 计算结果
+            const totalProb = lotteryConfig.prizes.reduce((sum, p) => sum + p.probability, 0);
+            let random = Math.random() * totalProb;
+            let selectedIndex = 0;
+            
+            for (let i = 0; i < lotteryConfig.prizes.length; i++) {
+                random -= lotteryConfig.prizes[i].probability;
+                if (random <= 0) {
+                    selectedIndex = i;
+                    break;
+                }
+            }
+            
+            // 计算旋转角度
+            let angleSum = 0;
+            for (let i = 0; i < selectedIndex; i++) {
+                angleSum += (lotteryConfig.prizes[i].probability / totalProb) * 360;
+            }
+            const prizeAngle = (lotteryConfig.prizes[selectedIndex].probability / totalProb) * 360;
+            const targetAngle = 360 * 5 + (360 - angleSum - prizeAngle / 2);
+            
+            currentRotation += targetAngle;
+            wheel.style.transition = 'transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)';
+            wheel.style.transform = `rotate(${currentRotation}deg)`;
+            
+            setTimeout(() => {
+                const prize = lotteryConfig.prizes[selectedIndex];
+                
+                // 保存历史
+                saveLotteryHistory(prize.name);
+                
+                // 显示结果
+                showModal(prize.name);
+                createConfetti();
+                
+                // 恢复按钮
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-play mr-2"></i>开始抽奖';
+                isDrawing = false;
+                
+                updateStats();
+            }, 4000);
+        }
+
+        function saveLotteryHistory(prizeName) {
+            const history = storage.get('lottery_history') || [];
+            history.unshift({
+                prize: prizeName,
+                time: new Date().toLocaleString('zh-CN'),
+                activity: document.getElementById('lottery-title').textContent
+            });
+            storage.set('lottery_history', history.slice(0, 50));
+            loadLotteryHistory();
+        }
+
+        function loadLotteryHistory() {
+            const history = storage.get('lottery_history') || [];
+            const container = document.getElementById('lottery-history');
+            
+            if (history.length === 0) {
+                container.innerHTML = '<div class="text-gray-400 text-center py-4">暂无记录</div>';
+            } else {
+                container.innerHTML = history.slice(0, 10).map(h => `
+                    <div class="flex justify-between items-center p-2 bg-gray-50 rounded">
+                        <span class="font-medium text-sm">${h.prize}</span>
+                        <span class="text-xs text-gray-400">${h.time.split(' ')[1]}</span>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // ==================== 汇报生成器 ====================
+        function loadReportExample() {
+            document.getElementById('report-input').value = `AI智能采购平台转型方案
+
+一、项目背景与目标
+随着企业规模扩大，传统采购流程效率低下，成本管控困难。本项目旨在通过AI技术实现采购全流程智能化，预计降低采购成本15%-25%，提升效率40%以上。
+
+二、现状分析
+当前采购流程平均耗时15个工作日，供应商管理依赖人工，缺乏数据驱动决策。年度采购额约5亿元，存在优化空间。
+
+三、AI应用场景
+1. 智能需求预测：基于历史数据预测采购需求
+2. 供应商智能评估：多维度评估供应商风险与能力
+3. 自动化询价比价：实时获取市场最优价格
+4. 合同智能审核：自动识别合同风险条款
+
+四、实施计划
+第一阶段（1-3月）：需求调研与系统设计
+第二阶段（4-6月）：核心功能开发
+第三阶段（7-9月）：试点运行与优化
+第四阶段（10-12月）：全面推广
+
+五、预期收益
+直接成本节约：800-1200万元/年
+效率提升：审批时间缩短60%
+风险控制：供应商风险识别率提升至95%
+
+六、团队配置
+项目经理1名，产品经理2名，技术团队8名，业务顾问3名`;
+        }
+
+        function clearReportInput() {
+            if (confirm('确定要清空内容吗？')) {
+                document.getElementById('report-input').value = '';
+            }
+        }
+
+        function generateReport() {
+            const text = document.getElementById('report-input').value.trim();
+            if (!text) {
+                alert('请先输入方案文本');
+                return;
+            }
+            
+            // 解析文本
+            const lines = text.split('\n');
+            const sections = [];
+            let currentSection = null;
+            
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+                
+                if (/^[一二三四五六七八九十]+、/.test(trimmed) || /^\d+[、.．]/.test(trimmed)) {
+                    if (currentSection) sections.push(currentSection);
+                    currentSection = { title: trimmed, items: [] };
+                } else if (currentSection) {
+                    currentSection.items.push(trimmed);
+                }
+            });
+            if (currentSection) sections.push(currentSection);
+            
+            // 提取指标
+            const metrics = [];
+            const percentMatches = text.match(/(\d+)%/g);
+            if (percentMatches) {
+                percentMatches.slice(0, 4).forEach(m => metrics.push({ value: m, label: '关键指标' }));
+            }
+            
+            // 生成HTML
+            const template = document.getElementById('report-template').value;
+            const isDark = template === 'tech';
+            
+            const html = `
+                <div class="${isDark ? 'bg-gray-900 text-white' : 'bg-white'} p-6 rounded-xl">
+                    <div class="text-center mb-6">
+                        <h2 class="text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-800'}">AI转型汇报方案</h2>
+                        <p class="text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'} mt-2">${new Date().toLocaleDateString('zh-CN')}</p>
+                    </div>
+                    
+                    ${metrics.length > 0 ? `
+                        <div class="grid grid-cols-4 gap-3 mb-6">
+                            ${metrics.map(m => `
+                                <div class="${isDark ? 'bg-gray-800' : 'bg-indigo-50'} rounded-lg p-3 text-center">
+                                    <div class="text-xl font-bold text-indigo-500">${m.value}</div>
+                                    <div class="text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}">${m.label}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    
+                    <div class="space-y-4">
+                        ${sections.map(s => `
+                            <div class="${isDark ? 'bg-gray-800' : 'bg-gray-50'} rounded-lg p-4">
+                                <h3 class="font-bold ${isDark ? 'text-indigo-400' : 'text-indigo-600'} mb-2">${s.title}</h3>
+                                ${s.items.map(item => `
+                                    <p class="text-sm ${isDark ? 'text-gray-300' : 'text-gray-600'}">${item}</p>
+                                `).join('')}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('report-preview').innerHTML = html;
+            document.getElementById('btn-download-report').disabled = false;
+            document.getElementById('btn-download-report').classList.remove('bg-gray-200', 'text-gray-400', 'cursor-not-allowed');
+            document.getElementById('btn-download-report').classList.add('btn-primary', 'text-white');
+            
+            // 增加统计
+            const count = parseInt(localStorage.getItem('oct_report_count') || '0') + 1;
+            localStorage.setItem('oct_report_count', count);
+            updateStats();
+        }
+
+        function downloadReport() {
+            const content = document.getElementById('report-preview').innerHTML;
+            const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-8">
+    ${content}
+</body>
+</html>`;
+            
+            const blob = new Blob([fullHtml], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `汇报方案_${new Date().toISOString().split('T')[0]}.html`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ==================== 3D地球 ====================
+        function initEarth() {
+            if (earthScene) return;
+            
+            const container = document.getElementById('earth-container');
+            container.innerHTML = '';
+            
+            // 场景
+            earthScene = new THREE.Scene();
+            
+            // 相机
+            earthCamera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            earthCamera.position.z = 3;
+            
+            // 渲染器
+            earthRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            earthRenderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(earthRenderer.domElement);
+            
+            // 地球
+            const geometry = new THREE.SphereGeometry(1, 64, 64);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x2233ff,
+                emissive: 0x112244,
+                specular: 0x111111,
+                shininess: 10
+            });
+            earthMesh = new THREE.Mesh(geometry, material);
+            earthScene.add(earthMesh);
+            
+            // 光照
+            const light = new THREE.DirectionalLight(0xffffff, 1);
+            light.position.set(5, 3, 5);
+            earthScene.add(light);
+            earthScene.add(new THREE.AmbientLight(0x333333));
+            
+            // 星星
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsCount = 1000;
+            const positions = new Float32Array(starsCount * 3);
+            for (let i = 0; i < starsCount * 3; i++) {
+                positions[i] = (Math.random() - 0.5) * 100;
+            }
+            starsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            const starsMaterial = new THREE.PointsMaterial({ color: 0xffffff, size: 0.1 });
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            earthScene.add(stars);
+            
+            // 动画
+            animateEarth();
+            
+            // 响应式
+            window.addEventListener('resize', () => {
+                if (!earthCamera || !earthRenderer) return;
+                earthCamera.aspect = container.clientWidth / container.clientHeight;
+                earthCamera.updateProjectionMatrix();
+                earthRenderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        function animateEarth() {
+            if (!earthRenderer) return;
+            requestAnimationFrame(animateEarth);
+            
+            if (isRotating && earthMesh) {
+                earthMesh.rotation.y += 0.002;
+            }
+            
+            earthRenderer.render(earthScene, earthCamera);
+        }
+
+        function setEarthMode(mode) {
+            earthMode = mode;
+            
+            // 更新按钮状态
+            ['network', 'data', 'traffic'].forEach(m => {
+                const btn = document.getElementById('btn-' + m);
+                if (m === mode) {
+                    btn.classList.remove('bg-gray-200', 'text-gray-700');
+                    btn.classList.add('bg-indigo-500', 'text-white');
+                } else {
+                    btn.classList.remove('bg-indigo-500', 'text-white');
+                    btn.classList.add('bg-gray-200', 'text-gray-700');
+                }
+            });
+            
+            // 改变地球颜色
+            if (earthMesh) {
+                const colors = {
+                    network: 0x2233ff,
+                    data: 0xff3333,
+                    traffic: 0x33ff33
+                };
+                earthMesh.material.color.setHex(colors[mode]);
+            }
+        }
+
+        function toggleEarthRotation() {
+            isRotating = !isRotating;
+        }
+
+        // ==================== 设置 ====================
+        function exportData() {
+            const data = {
+                todos: storage.get('todos') || [],
+                lottery_history: storage.get('lottery_history') || [],
+                lottery_config: storage.get('lottery_config'),
+                report_count: localStorage.getItem('oct_report_count') || '0',
+                export_time: new Date().toISOString()
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `toolbox_backup_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    
+                    if (data.todos) storage.set('todos', data.todos);
+                    if (data.lottery_history) storage.set('lottery_history', data.lottery_history);
+                    if (data.lottery_config) storage.set('lottery_config', data.lottery_config);
+                    if (data.report_count) localStorage.setItem('oct_report_count', data.report_count);
+                    
+                    alert('数据导入成功！');
+                    location.reload();
+                } catch (err) {
+                    alert('导入失败：文件格式错误');
+                }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+
+        function resetAllData() {
+            if (!confirm('确定要重置所有数据吗？此操作不可恢复！')) return;
+            
+            localStorage.removeItem('oct_todos');
+            localStorage.removeItem('oct_lottery_history');
+            localStorage.removeItem('oct_lottery_config');
+            localStorage.removeItem('oct_report_count');
+            
+            alert('数据已重置');
+            location.reload();
+        }
+
+        // ==================== 通用函数 ====================
+        function showModal(text) {
+            document.getElementById('result-text').textContent = text;
+            document.getElementById('result-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('result-modal').classList.remove('active');
+        }
+
+        function createConfetti() {
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'];
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                    document.body.appendChild(confetti);
+                    setTimeout(() => confetti.remove(), 3000);
+                }, i * 50);
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 点击弹窗外部关闭
+        document.getElementById('result-modal').addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
