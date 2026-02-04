@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI转型汇报方案生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card-hover {
+            transition: all 0.3s ease;
+        }
+        
+        .card-hover:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .timeline-line {
+            background: linear-gradient(to bottom, #667eea, #764ba2);
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animate-slide-in {
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        
+        .progress-bar {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border-left: 4px solid #667eea;
+        }
+        
+        .step-indicator {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* 预览模式样式 */
+        .preview-mode {
+            background: #f8fafc;
+        }
+        
+        .report-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 0 60px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section-divider {
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #667eea, transparent);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- 主应用界面 -->
+    <div id="app" class="min-h-screen">
+        <!-- 导航栏 -->
+        <nav class="gradient-bg text-white shadow-lg sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-robot text-2xl"></i>
+                        <span class="font-bold text-xl">AI转型汇报方案生成器</span>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button onclick="showHelp()" class="hover:bg-white/20 px-4 py-2 rounded-lg transition">
+                            <i class="fas fa-question-circle mr-2"></i>帮助
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 输入界面 -->
+        <div id="input-section" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- 步骤指示器 -->
+            <div class="flex justify-center mb-8">
+                <div class="flex items-center space-x-4">
+                    <div class="step-indicator text-white rounded-full w-10 h-10 flex items-center justify-center font-bold">1</div>
+                    <div class="w-20 h-1 bg-gray-300 rounded"></div>
+                    <div class="bg-gray-300 text-gray-600 rounded-full w-10 h-10 flex items-center justify-center font-bold">2</div>
+                    <div class="w-20 h-1 bg-gray-300 rounded"></div>
+                    <div class="bg-gray-300 text-gray-600 rounded-full w-10 h-10 flex items-center justify-center font-bold">3</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- 左侧：输入区域 -->
+                <div class="lg:col-span-2">
+                    <div class="glass-effect rounded-2xl p-6 shadow-xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-2xl font-bold text-gray-800">
+                                <i class="fas fa-edit text-indigo-600 mr-2"></i>
+                                输入转型方案文本
+                            </h2>
+                            <div class="flex space-x-2">
+                                <button onclick="loadExample()" class="text-sm text-indigo-600 hover:text-indigo-800 underline">
+                                    加载示例
+                                </button>
+                                <span class="text-gray-300">|</span>
+                                <button onclick="clearInput()" class="text-sm text-red-500 hover:text-red-700 underline">
+                                    清空
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <textarea 
+                            id="input-text" 
+                            class="w-full h-96 p-4 border-2 border-gray-200 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition resize-none text-gray-700 leading-relaxed"
+                            placeholder="请粘贴您的AI转型方案长文本...
+
+建议包含以下内容：
+• 项目背景与目标
+• 现状分析
+• AI应用场景
+• 实施计划与时间表
+• 预期收益与ROI
+• 风险评估
+• 团队与资源配置"
+                        ></textarea>
+                        
+                        <div class="flex justify-between items-center mt-4">
+                            <div class="text-sm text-gray-500">
+                                <i class="fas fa-info-circle mr-1"></i>
+                                支持自动识别关键信息并结构化展示
+                            </div>
+                            <button 
+                                onclick="generateReport()" 
+                                class="gradient-bg text-white px-8 py-3 rounded-xl font-bold hover:shadow-lg hover:scale-105 transition transform flex items-center"
+                            >
+                                <i class="fas fa-magic mr-2"></i>
+                                生成汇报方案
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 右侧：配置选项 -->
+                <div class="space-y-6">
+                    <!-- 模板选择 -->
+                    <div class="glass-effect rounded-2xl p-6 shadow-lg">
+                        <h3 class="font-bold text-gray-800 mb-4">
+                            <i class="fas fa-palette text-indigo-600 mr-2"></i>
+                            选择模板风格
+                        </h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center p-3 border-2 border-indigo-500 rounded-xl cursor-pointer bg-indigo-50">
+                                <input type="radio" name="template" value="modern" checked class="mr-3 text-indigo-600">
+                                <div>
+                                    <div class="font-semibold">现代商务</div>
+                                    <div class="text-sm text-gray-500">简洁专业，适合企业汇报</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-indigo-300 transition">
+                                <input type="radio" name="template" value="tech" class="mr-3 text-indigo-600">
+                                <div>
+                                    <div class="font-semibold">科技感</div>
+                                    <div class="text-sm text-gray-500">深色主题，数据可视化</div>
+                                </div>
+                            </label>
+                            <label class="flex items-center p-3 border-2 border-gray-200 rounded-xl cursor-pointer hover:border-indigo-300 transition">
+                                <input type="radio" name="template" value="minimal" class="mr-3 text-indigo-600">
+                                <div>
+                                    <div class="font-semibold">极简主义</div>
+                                    <div class="text-sm text-gray-500">留白充足，重点突出</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 生成选项 -->
+                    <div class="glass-effect rounded-2xl p-6 shadow-lg">
+                        <h3 class="font-bold text-gray-800 mb-4">
+                            <i class="fas fa-cog text-indigo-600 mr-2"></i>
+                            生成选项
+                        </h3>
+                        <div class="space-y-3">
+                            <label class="flex items-center">
+                                <input type="checkbox" id="include-charts" checked class="mr-3 rounded text-indigo-600">
+                                <span>包含数据图表</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="include-timeline" checked class="mr-3 rounded text-indigo-600">
+                                <span>包含时间线</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="include-metrics" checked class="mr-3 rounded text-indigo-600">
+                                <span>包含关键指标</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="checkbox" id="include-roadmap" checked class="mr-3 rounded text-indigo-600">
+                                <span>包含实施路线图</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 使用提示 -->
+                    <div class="bg-blue-50 rounded-2xl p-6 border border-blue-200">
+                        <h3 class="font-bold text-blue-800 mb-2">
+                            <i class="fas fa-lightbulb mr-2"></i>
+                            使用提示
+                        </h3>
+                        <ul class="text-sm text-blue-700 space-y-2">
+                            <li>• 文本越详细，生成的汇报越精准</li>
+                            <li>• 支持自动识别数字和百分比</li>
+                            <li>• 生成后可在线预览和下载</li>
+                            <li>• 支持通过本地URL分享</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 生成中状态 -->
+        <div id="generating-section" class="hidden max-w-4xl mx-auto px-4 py-20 text-center">
+            <div class="relative w-32 h-32 mx-auto mb-8">
+                <div class="absolute inset-0 border-4 border-indigo-200 rounded-full"></div>
+                <div class="absolute inset-0 border-4 border-indigo-600 rounded-full border-t-transparent animate-spin"></div>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <i class="fas fa-brain text-3xl text-indigo-600"></i>
+                </div>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">正在生成汇报方案...</h2>
+            <p class="text-gray-600">AI正在分析文本结构，提取关键信息</p>
+            <div class="mt-6 max-w-md mx-auto">
+                <div class="h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="progress-bar h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progress-text" class="text-sm text-gray-500 mt-2">正在解析文本...</p>
+            </div>
+        </div>
+
+        <!-- 预览界面 -->
+        <div id="preview-section" class="hidden">
+            <!-- 工具栏 -->
+            <div class="bg-white shadow-md sticky top-16 z-40 border-b">
+                <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+                    <div class="flex items-center space-x-4">
+                        <button onclick="backToInput()" class="text-gray-600 hover:text-gray-800 flex items-center">
+                            <i class="fas fa-arrow-left mr-2"></i>
+                            返回编辑
+                        </button>
+                        <span class="text-gray-300">|</span>
+                        <span class="text-gray-600">
+                            <i class="fas fa-eye mr-2"></i>
+                            预览模式
+                        </span>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button onclick="openInBrowser()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition flex items-center">
+                            <i class="fas fa-external-link-alt mr-2"></i>
+                            浏览器打开
+                        </button>
+                        <button onclick="downloadHTML()" class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition flex items-center">
+                            <i class="fas fa-download mr-2"></i>
+                            下载HTML
+                        </button>
+                        <button onclick="copyURL()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition flex items-center">
+                            <i class="fas fa-link mr-2"></i>
+                            复制链接
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 汇报内容 -->
+            <div class="preview-mode py-8">
+                <div id="report-content" class="report-container rounded-2xl overflow-hidden">
+                    <!-- 动态生成的内容将插入这里 -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 示例数据
+        const EXAMPLE_TEXT = `AI智能采购平台转型方案
+
+一、项目背景与目标
+随着企业规模扩大，传统采购流程效率低下，成本管控困难。本项目旨在通过AI技术实现采购全流程智能化，预计降低采购成本15%-25%，提升效率40%以上。
+
+二、现状分析
+当前采购流程平均耗时15个工作日，供应商管理依赖人工，缺乏数据驱动决策。年度采购额约5亿元，存在优化空间。
+
+三、AI应用场景
+1. 智能需求预测：基于历史数据预测采购需求
+2. 供应商智能评估：多维度评估供应商风险与能力
+3. 自动化询价比价：实时获取市场最优价格
+4. 合同智能审核：自动识别合同风险条款
+
+四、实施计划
+第一阶段（1-3月）：需求调研与系统设计
+第二阶段（4-6月）：核心功能开发
+第三阶段（7-9月）：试点运行与优化
+第四阶段（10-12月）：全面推广
+
+五、预期收益
+直接成本节约：800-1200万元/年
+效率提升：审批时间缩短60%
+风险控制：供应商风险识别率提升至95%
+
+六、团队配置
+项目经理1名，产品经理2名，技术团队8名，业务顾问3名
+
+七、风险评估
+数据安全风险：已制定数据加密与权限管理方案
+供应商配合度：通过激励机制提高配合度
+系统集成风险：采用微服务架构，降低耦合度`;
+
+        let generatedHTML = '';
+        let reportData = {};
+
+        function loadExample() {
+            document.getElementById('input-text').value = EXAMPLE_TEXT;
+        }
+
+        function clearInput() {
+            if (confirm('确定要清空所有内容吗？')) {
+                document.getElementById('input-text').value = '';
+            }
+        }
+
+        function showHelp() {
+            alert(`使用帮助：
+
+1. 在左侧文本框粘贴您的AI转型方案
+2. 选择喜欢的模板风格
+3. 勾选需要包含的模块
+4. 点击"生成汇报方案"
+5. 预览效果并下载或分享
+
+支持的文本格式：
+- 自动识别标题和段落
+- 提取数字和百分比
+- 识别时间节点
+- 生成可视化图表`);
+        }
+
+        // 分析文本并提取结构
+        function analyzeText(text) {
+            const sections = [];
+            const lines = text.split('\n');
+            let currentSection = null;
+            
+            lines.forEach(line => {
+                const trimmed = line.trim();
+                if (!trimmed) return;
+                
+                // 识别标题（数字+点/顿号 或 中文数字）
+                if (/^[一二三四五六七八九十]+、/.test(trimmed) || 
+                    /^\d+[、.．]/.test(trimmed) ||
+                    /^第[一二三四五六七八九十]+章/.test(trimmed)) {
+                    if (currentSection) sections.push(currentSection);
+                    currentSection = {
+                        title: trimmed,
+                        content: [],
+                        items: []
+                    };
+                } else if (currentSection) {
+                    // 识别列表项
+                    if (/^[\d一二三四五六七八九十]+[.、．]/.test(trimmed)) {
+                        currentSection.items.push(trimmed);
+                    } else {
+                        currentSection.content.push(trimmed);
+                    }
+                }
+            });
+            
+            if (currentSection) sections.push(currentSection);
+            
+            // 提取关键数据
+            const metrics = extractMetrics(text);
+            const timeline = extractTimeline(text);
+            
+            return { sections, metrics, timeline };
+        }
+
+        function extractMetrics(text) {
+            const metrics = [];
+            
+            // 提取百分比
+            const percentMatches = text.match(/(\d+)%/g);
+            if (percentMatches) {
+                percentMatches.forEach(match => {
+                    const context = getContext(text, match);
+                    metrics.push({
+                        value: match,
+                        label: context || '关键指标',
+                        type: 'percentage'
+                    });
+                });
+            }
+            
+            // 提取金额
+            const moneyMatches = text.match(/(\d+[\d,]*(?:\.\d+)?)\s*万?元/g);
+            if (moneyMatches) {
+                moneyMatches.slice(0, 3).forEach(match => {
+                    metrics.push({
+                        value: match,
+                        label: '预算/收益',
+                        type: 'currency'
+                    });
+                });
+            }
+            
+            // 提取时间
+            const timeMatches = text.match(/(\d+)\s*(个月|天|周|年)/g);
+            if (timeMatches) {
+                timeMatches.slice(0, 2).forEach(match => {
+                    metrics.push({
+                        value: match,
+                        label: '时间周期',
+                        type: 'time'
+                    });
+                });
+            }
+            
+            return metrics.slice(0, 6);
+        }
+
+        function extractTimeline(text) {
+            const timeline = [];
+            const phaseMatches = text.match(/第[一二三四五六七八九十\d]+阶段[：:]?[^\n]+/g);
+            
+            if (phaseMatches) {
+                phaseMatches.forEach((match, index) => {
+                    const timeMatch = match.match(/[(（]([^)）]+)[)）]/);
+                    timeline.push({
+                        phase: `第${['一','二','三','四','五'][index] || (index+1)}阶段`,
+                        title: match.replace(/第[一二三四五六七八九十\d]+阶段[：:]?\s*/, '').split('（')[0].split('(')[0],
+                        time: timeMatch ? timeMatch[1] : '待定',
+                        status: index === 0 ? 'completed' : index === 1 ? 'in-progress' : 'pending'
+                    });
+                });
+            }
+            
+            // 如果没有找到阶段，创建默认时间线
+            if (timeline.length === 0) {
+                timeline.push(
+                    { phase: '第一阶段', title: '需求调研', time: '1-2月', status: 'completed' },
+                    { phase: '第二阶段', title: '方案设计', time: '3-4月', status: 'in-progress' },
+                    { phase: '第三阶段', title: '开发实施', time: '5-8月', status: 'pending' },
+                    { phase: '第四阶段', title: '上线运营', time: '9-12月', status: 'pending' }
+                );
+            }
+            
+            return timeline;
+        }
+
+        function getContext(text, match) {
+            const index = text.indexOf(match);
+            if (index === -1) return '';
+            const before = text.substring(Math.max(0, index - 30), index);
+            const after = text.substring(index + match.length, Math.min(text.length, index + match.length + 30));
+            return (before + after).replace(/[：:，,。\.]/g, ' ').trim();
+        }
+
+        async function generateReport() {
+            const text = document.getElementById('input-text').value.trim();
+            
+            if (!text) {
+                alert('请先输入转型方案文本');
+                return;
+            }
+            
+            // 显示生成中界面
+            document.getElementById('input-section').classList.add('hidden');
+            document.getElementById('generating-section').classList.remove('hidden');
+            
+            // 模拟进度
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const steps = [
+                { progress: 20, text: '正在解析文本结构...' },
+                { progress: 40, text: '正在提取关键信息...' },
+                { progress: 60, text: '正在生成可视化图表...' },
+                { progress: 80, text: '正在美化排版...' },
+                { progress: 100, text: '即将完成...' }
+            ];
+            
+            for (let step of steps) {
+                await new Promise(r => setTimeout(r, 400));
+                progressBar.style.width = step.progress + '%';
+                progressText.textContent = step.text;
+            }
+            
+            // 分析文本
+            reportData = analyzeText(text);
+            
+            // 生成HTML
+            generatedHTML = createReportHTML(reportData, text);
+            
+            // 显示预览
+            document.getElementById('generating-section').classList.add('hidden');
+            document.getElementById('preview-section').classList.remove('hidden');
+            document.getElementById('report-content').innerHTML = generatedHTML;
+            
+            // 初始化图表
+            setTimeout(initCharts, 100);
+        }
+
+        function createReportHTML(data, originalText) {
+            const template = document.querySelector('input[name="template"]:checked').value;
+            const includeCharts = document.getElementById('include-charts').checked;
+            const includeTimeline = document.getElementById('include-timeline').checked;
+            const includeMetrics = document.getElementById('include-metrics').checked;
+            const includeRoadmap = document.getElementById('include-roadmap').checked;
+            
+            // 提取标题
+            const titleMatch = originalText.match(/^(.*?)(?:\n|$)/);
+            const title = titleMatch ? titleMatch[1].trim() : 'AI转型汇报方案';
+            
+            let html = `
+            <div class="${template === 'tech' ? 'bg-gray-900 text-white' : 'bg-white'} min-h-screen">
+                <!-- 封面 -->
+                <div class="${template === 'tech' ? 'bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900' : 'gradient-bg'} text-white py-20 px-8 text-center relative overflow-hidden">
+                    <div class="absolute inset-0 opacity-20">
+                        <div class="absolute top-10 left-10 w-32 h-32 border-4 border-white/30 rounded-full"></div>
+                        <div class="absolute bottom-10 right-10 w-48 h-48 border-4 border-white/20 rounded-full"></div>
+                        <div class="absolute top-1/2 left-1/4 w-24 h-24 border-2 border-white/20 rounded-full"></div>
+                    </div>
+                    <div class="relative z-10">
+                        <div class="text-6xl mb-6"><i class="fas fa-robot"></i></div>
+                        <h1 class="text-4xl md:text-5xl font-bold mb-4">${title}</h1>
+                        <p class="text-xl opacity-80">数字化转型战略规划</p>
+                        <div class="mt-8 flex justify-center space-x-6 text-sm opacity-70">
+                            <span><i class="fas fa-calendar mr-2"></i>${new Date().toLocaleDateString('zh-CN')}</span>
+                            <span><i class="fas fa-building mr-2"></i>战略发展部</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 关键指标 -->
+                ${includeMetrics && data.metrics.length > 0 ? `
+                <div class="py-12 px-8 ${template === 'tech' ? 'bg-gray-800' : 'bg-gray-50'}">
+                    <h2 class="text-2xl font-bold mb-8 text-center ${template === 'tech' ? 'text-white' : 'text-gray-800'}">
+                        <i class="fas fa-chart-line text-indigo-500 mr-2"></i>关键指标
+                    </h2>
+                    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-${Math.min(data.metrics.length, 6)} gap-6 max-w-6xl mx-auto">
+                        ${data.metrics.map((m, i) => `
+                            <div class="${template === 'tech' ? 'bg-gray-700' : 'metric-card'} rounded-2xl p-6 text-center card-hover animate-fade-in" style="animation-delay: ${i * 0.1}s">
+                                <div class="text-3xl font-bold ${template === 'tech' ? 'text-indigo-400' : 'text-indigo-600'} mb-2">${m.value}</div>
+                                <div class="text-sm ${template === 'tech' ? 'text-gray-400' : 'text-gray-600'}">${m.label}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- 实施时间线 -->
+                ${includeTimeline && data.timeline.length > 0 ? `
+                <div class="py-12 px-8 ${template === 'tech' ? 'bg-gray-900' : 'bg-white'}">
+                    <h2 class="text-2xl font-bold mb-12 text-center ${template === 'tech' ? 'text-white' : 'text-gray-800'}">
+                        <i class="fas fa-road text-indigo-500 mr-2"></i>实施路线图
+                    </h2>
+                    <div class="max-w-4xl mx-auto">
+                        ${data.timeline.map((t, i) => `
+                            <div class="flex items-start mb-8 animate-slide-in" style="animation-delay: ${i * 0.15}s">
+                                <div class="flex-shrink-0 w-24 text-right pr-4">
+                                    <div class="font-bold ${template === 'tech' ? 'text-indigo-400' : 'text-indigo-600'}">${t.time}</div>
+                                </div>
+                                <div class="flex-shrink-0 relative">
+                                    <div class="w-4 h-4 rounded-full ${t.status === 'completed' ? 'bg-green-500' : t.status === 'in-progress' ? 'bg-yellow-500 animate-pulse' : 'bg-gray-300'} border-4 ${template === 'tech' ? 'border-gray-800' : 'border-white'}"></div>
+                                    ${i < data.timeline.length - 1 ? `<div class="absolute top-4 left-1/2 transform -translate-x-1/2 w-0.5 h-16 timeline-line"></div>` : ''}
+                                </div>
+                                <div class="flex-grow pl-4 pb-8">
+                                    <div class="${template === 'tech' ? 'bg-gray-800' : 'bg-white'} rounded-xl p-4 shadow-lg ${template !== 'tech' ? 'border border-gray-100' : ''}">
+                                        <div class="font-bold ${template === 'tech' ? 'text-white' : 'text-gray-800'} mb-1">${t.phase}：${t.title}</div>
+                                        <div class="text-sm ${template === 'tech' ? 'text-gray-400' : 'text-gray-500'}">
+                                            ${t.status === 'completed' ? '✓ 已完成' : t.status === 'in-progress' ? '⟳ 进行中' : '○ 待启动'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- 详细内容 -->
+                <div class="py-12 px-8 ${template === 'tech' ? 'bg-gray-800' : 'bg-gray-50'}">
+                    <div class="max-w-4xl mx-auto">
+                        <h2 class="text-2xl font-bold mb-8 ${template === 'tech' ? 'text-white' : 'text-gray-800'}">
+                            <i class="fas fa-file-alt text-indigo-500 mr-2"></i>方案详情
+                        </h2>
+                        ${data.sections.map((section, i) => `
+                            <div class="mb-8 animate-fade-in" style="animation-delay: ${i * 0.1}s">
+                                <div class="highlight-box rounded-xl p-6 ${template === 'tech' ? 'bg-gray-700' : 'bg-white'}">
+                                    <h3 class="text-xl font-bold ${template === 'tech' ? 'text-indigo-400' : 'text-indigo-600'} mb-4">
+                                        ${section.title}
+                                    </h3>
+                                    ${section.content.length > 0 ? `
+                                        <p class="${template === 'tech' ? 'text-gray-300' : 'text-gray-600'} leading-relaxed mb-4">
+                                            ${section.content.join('</p><p class="' + (template === 'tech' ? 'text-gray-300' : 'text-gray-600') + ' leading-relaxed mb-4">')}
+                                        </p>
+                                    ` : ''}
+                                    ${section.items.length > 0 ? `
+                                        <ul class="space-y-2">
+                                            ${section.items.map(item => `
+                                                <li class="flex items-start">
+                                                    <i class="fas fa-check-circle text-green-500 mt-1 mr-3 flex-shrink-0"></i>
+                                                    <span class="${template === 'tech' ? 'text-gray-300' : 'text-gray-600'}">${item}</span>
+                                                </li>
+                                            `).join('')}
+                                        </ul>
+                                    ` : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+
+                <!-- 数据图表 -->
+                ${includeCharts ? `
+                <div class="py-12 px-8 ${template === 'tech' ? 'bg-gray-900' : 'bg-white'}">
+                    <h2 class="text-2xl font-bold mb-8 text-center ${template === 'tech' ? 'text-white' : 'text-gray-800'}">
+                        <i class="fas fa-chart-pie text-indigo-500 mr-2"></i>数据分析
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+                        <div class="${template === 'tech' ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 shadow-lg">
+                            <canvas id="roiChart"></canvas>
+                        </div>
+                        <div class="${template === 'tech' ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 shadow-lg">
+                            <canvas id="phaseChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+
+                <!-- 页脚 -->
+                <div class="${template === 'tech' ? 'bg-gray-900' : 'bg-gray-800'} text-white py-8 px-8 text-center">
+                    <p class="opacity-60">本报告由 AI转型汇报方案生成器 自动生成</p>
+                    <p class="opacity-40 text-sm mt-2">生成时间：${new Date().toLocaleString('zh-CN')}</p>
+                </div>
+            </div>`;
+            
+            return html;
+        }
+
+        function initCharts() {
+            const ctx1 = document.getElementById('roiChart');
+            const ctx2 = document.getElementById('phaseChart');
+            
+            if (ctx1) {
+                new Chart(ctx1, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['成本节约', '效率提升', '风险降低', '其他收益'],
+                        datasets: [{
+                            data: [35, 30, 20, 15],
+                            backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: '预期收益分布'
+                            }
+                        }
+                    }
+                });
+            }
+            
+            if (ctx2) {
+                new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                        datasets: [{
+                            label: '完成进度(%)',
+                            data: [25, 50, 75, 100],
+                            backgroundColor: 'linear-gradient(90deg, #667eea, #764ba2)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: '季度实施进度'
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function backToInput() {
+            document.getElementById('preview-section').classList.add('hidden');
+            document.getElementById('input-section').classList.remove('hidden');
+        }
+
+        function downloadHTML() {
+            const fullHTML = createFullHTMLDocument(generatedHTML);
+            const blob = new Blob([fullHTML], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `AI转型汇报方案_${new Date().toISOString().split('T')[0]}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function createFullHTMLDocument(content) {
+            return `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI转型汇报方案</title>
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"><\/script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * { font-family: 'Noto Sans SC', sans-serif; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .timeline-line { background: linear-gradient(to bottom, #667eea, #764ba2); }
+        .metric-card { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); }
+        .highlight-box { background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%); border-left: 4px solid #667eea; }
+        .card-hover { transition: all 0.3s ease; }
+        .card-hover:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.6s ease-out; }
+    </style>
+</head>
+<body>
+    ${content}
+    <script>
+        // 初始化图表
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx1 = document.getElementById('roiChart');
+            const ctx2 = document.getElementById('phaseChart');
+            if (ctx1) {
+                new Chart(ctx1, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['成本节约', '效率提升', '风险降低', '其他收益'],
+                        datasets: [{ data: [35, 30, 20, 15], backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe'] }]
+                    },
+                    options: { responsive: true, plugins: { title: { display: true, text: '预期收益分布' } } }
+                });
+            }
+            if (ctx2) {
+                new Chart(ctx2, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Q1', 'Q2', 'Q3', 'Q4'],
+                        datasets: [{ label: '完成进度(%)', data: [25, 50, 75, 100], backgroundColor: '#667eea' }]
+                    },
+                    options: { responsive: true, plugins: { title: { display: true, text: '季度实施进度' } } }
+                });
+            }
+        });
+    <\/script>
+</body>
+</html>`;
+        }
+
+        function openInBrowser() {
+            const fullHTML = createFullHTMLDocument(generatedHTML);
+            const blob = new Blob([fullHTML], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            // 延迟释放URL，让用户有时间看到页面
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }
+
+        function copyURL() {
+            // 创建一个临时的data URI（限于小内容）或使用Blob URL
+            const fullHTML = createFullHTMLDocument(generatedHTML);
+            
+            if (fullHTML.length > 500000) {
+                alert('报告内容较大，建议使用"浏览器打开"或"下载HTML"功能');
+                return;
+            }
+            
+            const blob = new Blob([fullHTML], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            navigator.clipboard.writeText(url).then(() => {
+                alert('链接已复制到剪贴板！有效期约1分钟\n\n提示：此链接仅在当前浏览器会话中有效');
+            }).catch(() => {
+                prompt('请复制以下链接：', url);
+            });
+            
+            // 1分钟后释放
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+        }
+    </script>
+</body>
+</html>
