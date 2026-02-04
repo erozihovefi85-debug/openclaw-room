@@ -3,734 +3,1218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>实时活动地球 - Real-time Earth Activity</title>
+    <title>🎲 万能抽奖系统</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
     <style>
         * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+            font-family: 'Noto Sans SC', sans-serif;
         }
         
-        body {
-            overflow: hidden;
-            background: #000;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        /* 动画定义 */
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
         }
         
-        #canvas-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-        }
-        
-        #info {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            color: #fff;
-            z-index: 100;
-            pointer-events: none;
-        }
-        
-        #info h1 {
-            font-size: 24px;
-            font-weight: 300;
-            letter-spacing: 2px;
-            margin-bottom: 10px;
-            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        #info .stats {
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.7);
-            line-height: 1.8;
-        }
-        
-        #info .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .pulse-dot {
-            width: 8px;
-            height: 8px;
-            background: #00ff88;
-            border-radius: 50%;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(1.2); }
-        }
-        
-        #controls {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            display: flex;
-            gap: 15px;
-            z-index: 100;
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: #fff;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 13px;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-        
-        .btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.4);
-            transform: translateY(-2px);
-        }
-        
-        .btn.active {
-            background: linear-gradient(135deg, #00d4ff, #7b2cbf);
-            border-color: transparent;
-        }
-        
-        #loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            transition: opacity 0.5s ease;
-        }
-        
-        .loader {
-            width: 60px;
-            height: 60px;
-            border: 2px solid transparent;
-            border-top-color: #00d4ff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        .loader-inner {
-            width: 40px;
-            height: 40px;
-            border: 2px solid transparent;
-            border-top-color: #7b2cbf;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite reverse;
-            margin: 8px;
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
         }
         
         @keyframes spin {
+            from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
         
-        #loading p {
-            color: rgba(255, 255, 255, 0.6);
-            margin-top: 20px;
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 215, 0, 0.5); }
+            50% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.8), 0 0 60px rgba(255, 215, 0, 0.6); }
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+        
+        @keyframes confetti {
+            0% { transform: translateY(-100%) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+        }
+        
+        @keyframes shine {
+            0% { background-position: -200% center; }
+            100% { background-position: 200% center; }
+        }
+        
+        .animate-bounce-custom {
+            animation: bounce 2s ease-in-out infinite;
+        }
+        
+        .animate-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+        
+        .animate-spin-fast {
+            animation: spin 0.1s linear infinite;
+        }
+        
+        .animate-pulse-custom {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        
+        .animate-glow {
+            animation: glow 2s ease-in-out infinite;
+        }
+        
+        .animate-float {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        /* 主题样式 */
+        .theme-spring {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+        }
+        
+        .theme-tech {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+        }
+        
+        .theme-party {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 50%, #ffd93d 100%);
+        }
+        
+        .theme-ocean {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        .theme-lucky {
+            background: linear-gradient(135deg, #ffd700 0%, #ff8c00 50%, #ff4500 100%);
+        }
+        
+        /* 转盘样式 */
+        .wheel-container {
+            position: relative;
+            width: 400px;
+            height: 400px;
+        }
+        
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .wheel-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            border-radius: 50%;
+            z-index: 10;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .wheel-center:hover {
+            transform: translate(-50%, -50%) scale(1.1);
+        }
+        
+        .wheel-pointer {
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 50px;
+            background: linear-gradient(to bottom, #ff4444, #cc0000);
+            clip-path: polygon(50% 100%, 0 0, 100% 0);
+            z-index: 20;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+        }
+        
+        .wheel-item {
+            position: absolute;
+            width: 50%;
+            height: 50%;
+            transform-origin: right bottom;
+            left: 0;
+            top: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
             font-size: 14px;
-            letter-spacing: 2px;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .wheel-item span {
+            transform: rotate(90deg);
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+        
+        /* 卡片样式 */
+        .lottery-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .lottery-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 30px 60px rgba(0,0,0,0.15);
+        }
+        
+        /* 老虎机样式 */
+        .slot-machine {
+            background: linear-gradient(135deg, #2d2d2d, #1a1a1a);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4), inset 0 2px 10px rgba(255,255,255,0.1);
+        }
+        
+        .slot-window {
+            background: linear-gradient(180deg, #1a1a1a, #2d2d2d);
+            border-radius: 15px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: inset 0 4px 20px rgba(0,0,0,0.5);
+            border: 3px solid #444;
+        }
+        
+        .slot-item {
+            font-size: 48px;
+            font-weight: 900;
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: none;
+        }
+        
+        /* 按钮样式 */
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
+        }
+        
+        .btn-primary:active {
+            transform: translateY(-1px);
+        }
+        
+        /* 彩带效果 */
+        .confetti {
+            position: fixed;
+            width: 10px;
+            height: 10px;
+            top: -10px;
+            animation: confetti 3s ease-out forwards;
+            z-index: 9999;
+        }
+        
+        /* 结果弹窗 */
+        .result-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        
+        .result-modal.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .result-content {
+            background: linear-gradient(135deg, #fff, #f8f9fa);
+            border-radius: 30px;
+            padding: 50px;
+            text-align: center;
+            max-width: 500px;
+            width: 90%;
+            transform: scale(0.8);
+            transition: transform 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .result-modal.active .result-content {
+            transform: scale(1);
+        }
+        
+        .result-content::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 30%,
+                rgba(255, 215, 0, 0.1) 50%,
+                transparent 70%
+            );
+            animation: shine 3s infinite;
+        }
+        
+        /* 奖品列表 */
+        .prize-item {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .prize-item:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateX(5px);
+        }
+        
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .wheel-container {
+                width: 300px;
+                height: 300px;
+            }
+            
+            .wheel-item {
+                font-size: 12px;
+            }
+        }
+        
+        /* 预设模板 */
+        .template-card {
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 3px solid transparent;
+        }
+        
+        .template-card:hover {
+            transform: translateY(-5px);
+            border-color: #667eea;
+        }
+        
+        .template-card.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
+        }
+        
+        /* 数字球 */
+        .number-ball {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            font-weight: 900;
+            color: white;
+            box-shadow: 0 10px 30px rgba(238, 90, 36, 0.4);
+            animation: float 3s ease-in-out infinite;
         }
     </style>
 </head>
-<body>
-    <div id="loading">
-        <div class="loader">
-            <div class="loader-inner"></div>
+<body class="theme-lucky min-h-screen">
+    <!-- 主应用 -->
+    <div id="app">
+        <!-- 导航栏 -->
+        <nav class="bg-black/20 backdrop-blur-md text-white sticky top-0 z-50">
+            <div class="max-w-7xl mx-auto px-4 py-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-3">
+                        <i class="fas fa-dice text-3xl text-yellow-400 animate-bounce-custom"></i>
+                        <span class="text-2xl font-bold">万能抽奖系统</span>
+                    </div>
+                    <div class="flex space-x-2">
+                        <button onclick="showSection('home')" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/20 transition">首页</button>
+                        <button onclick="showSection('config')" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/20 transition">配置</button>
+                        <button onclick="showSection('lottery')" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/20 transition">抽奖</button>
+                        <button onclick="showSection('history')" class="nav-btn px-4 py-2 rounded-lg hover:bg-white/20 transition">历史</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 首页 -->
+        <section id="home-section" class="py-12">
+            <div class="max-w-6xl mx-auto px-4">
+                <!-- 欢迎标题 -->
+                <div class="text-center mb-12">
+                    <h1 class="text-5xl font-black text-white mb-4 drop-shadow-lg">
+                        🎉 让抽奖变得简单有趣！
+                    </h1>
+                    <p class="text-xl text-white/80">适用于年会、聚会、活动、日常决策等多种场景</p>
+                </div>
+
+                <!-- 预设模板 -->
+                <div class="mb-12">
+                    <h2 class="text-2xl font-bold text-white mb-6 text-center">
+                        <i class="fas fa-magic mr-2"></i>快速开始 - 选择模板
+                    </h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                        <div class="template-card bg-white/90 rounded-2xl p-6 text-center" onclick="loadTemplate('company')">
+                            <div class="text-4xl mb-3">🏢</div>
+                            <div class="font-bold text-gray-800">公司年会</div>
+                            <div class="text-sm text-gray-500 mt-1">一等奖到幸运奖</div>
+                        </div>
+                        <div class="template-card bg-white/90 rounded-2xl p-6 text-center" onclick="loadTemplate('family')">
+                            <div class="text-4xl mb-3">👨‍👩‍👧‍👦</div>
+                            <div class="font-bold text-gray-800">家庭聚会</div>
+                            <div class="text-sm text-gray-500 mt-1">红包与游戏</div>
+                        </div>
+                        <div class="template-card bg-white/90 rounded-2xl p-6 text-center" onclick="loadTemplate('food')">
+                            <div class="text-4xl mb-3">🍜</div>
+                            <div class="font-bold text-gray-800">今天吃什么</div>
+                            <div class="text-sm text-gray-500 mt-1">解决选择困难</div>
+                        </div>
+                        <div class="template-card bg-white/90 rounded-2xl p-6 text-center" onclick="loadTemplate('activity')">
+                            <div class="text-4xl mb-3">🎯</div>
+                            <div class="font-bold text-gray-800">活动抽奖</div>
+                            <div class="text-sm text-gray-500 mt-1">通用活动模板</div>
+                        </div>
+                        <div class="template-card bg-white/90 rounded-2xl p-6 text-center" onclick="loadTemplate('custom')">
+                            <div class="text-4xl mb-3">✨</div>
+                            <div class="font-bold text-gray-800">自定义</div>
+                            <div class="text-sm text-gray-500 mt-1">从零开始创建</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 功能特点 -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div class="lottery-card text-center">
+                        <i class="fas fa-palette text-4xl text-purple-500 mb-4"></i>
+                        <h3 class="font-bold text-lg mb-2">多种主题</h3>
+                        <p class="text-gray-600">5种精美主题，适应不同场景</p>
+                    </div>
+                    
+                    <div class="lottery-card text-center">
+                        <i class="fas fa-cogs text-4xl text-blue-500 mb-4"></i>
+                        <h3 class="font-bold text-lg mb-2">灵活配置</h3>
+                        <p class="text-gray-600">自定义奖品、概率、数量</p>
+                    </div>
+                    
+                    <div class="lottery-card text-center">
+                        <i class="fas fa-magic text-4xl text-pink-500 mb-4"></i>
+                        <h3 class="font-bold text-lg mb-2">酷炫动画</h3>
+                        <p class="text-gray-600">转盘、老虎机、数字球多种效果</p>
+                    </div>
+                    
+                    <div class="lottery-card text-center">
+                        <i class="fas fa-history text-4xl text-green-500 mb-4"></i>
+                        <h3 class="font-bold text-lg mb-2">记录保存</h3>
+                        <p class="text-gray-600">自动保存抽奖历史记录</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 配置页面 -->
+        <section id="config-section" class="hidden py-12">
+            <div class="max-w-6xl mx-auto px-4">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- 左侧：基本设置 -->
+                    <div class="lg:col-span-1">
+                        <div class="lottery-card">
+                            <h2 class="text-xl font-bold mb-6"><i class="fas fa-cog mr-2"></i>基本设置</h2>
+                            
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">活动名称</label>
+                                    <input type="text" id="activity-name" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                           value="公司年会大抽奖">
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">主题风格</label>
+                                    <select id="theme-select" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                            onchange="changeTheme(this.value)">
+                                        <option value="lucky">🎊 幸运金</option>
+                                        <option value="spring">🌸 春日暖</option>
+                                        <option value="tech">💻 科技感</option>
+                                        <option value="party">🎉 派对紫</option>
+                                        <option value="ocean">🌊 海洋蓝</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">抽奖模式</label>
+                                    <select id="mode-select" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+                                            onchange="changeMode(this.value)">
+                                        <option value="wheel">🎯 幸运转盘</option>
+                                        <option value="slot">🎰 老虎机</option>
+                                        <option value="number">🔢 数字球</option>
+                                        <option value="card">🃏 翻卡片</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">抽奖次数限制</label>
+                                    <input type="number" id="max-draws" class="w-full px-4 py-2 border rounded-lg" value="0" min="0"
+                                           placeholder="0为无限制">
+                                </div>
+                                
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="allow-repeat" class="mr-2">
+                                    <label>允许重复中奖</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：奖品配置 -->
+                    <div class="lg:col-span-2">
+                        <div class="lottery-card">
+                            <div class="flex justify-between items-center mb-6">
+                                <h2 class="text-xl font-bold"><i class="fas fa-gift mr-2"></i>奖品配置</h2>
+                                <button onclick="addPrize()" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition">
+                                    <i class="fas fa-plus mr-2"></i>添加奖品
+                                </button>
+                            </div>
+                            
+                            <div id="prizes-list" class="space-y-3">
+                                <!-- 动态生成奖品列表 -->
+                            </div>
+                            
+                            <div class="mt-6 p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                                <p class="text-sm text-yellow-800">
+                                    <i class="fas fa-info-circle mr-2"></i>
+                                    概率总和不需要等于100%，系统会自动按比例计算
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 抽奖页面 -->
+        <section id="lottery-section" class="hidden py-12">
+            <div class="max-w-6xl mx-auto px-4 text-center">
+                <!-- 活动标题 -->
+                <h1 id="lottery-title" class="text-4xl font-black text-white mb-8 drop-shadow-lg">公司年会大抽奖</h1>
+
+                <!-- 转盘模式 -->
+                <div id="wheel-mode" class="flex justify-center mb-8">
+                    <div class="wheel-container">
+                        <div class="wheel-pointer"></div>
+                        <div id="wheel" class="wheel">
+                            <!-- 动态生成转盘内容 -->
+                        </div>
+                        <div class="wheel-center" onclick="startDraw()">
+                            <i class="fas fa-play text-white"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 老虎机模式 -->
+                <div id="slot-mode" class="hidden max-w-2xl mx-auto mb-8">
+                    <div class="slot-machine">
+                        <div class="slot-window mb-6">
+                            <div id="slot-result" class="slot-item">???</div>
+                        </div>
+                        <button onclick="startDraw()" class="w-full bg-gradient-to-r from-red-500 to-pink-500 text-white py-4 rounded-xl font-bold text-xl hover:from-red-600 hover:to-pink-600 transition"
+                                id="slot-btn">
+                            🎰 开始抽奖
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 数字球模式 -->
+                <div id="number-mode" class="hidden mb-8">
+                    <div class="flex justify-center items-center space-x-8">
+                        <div id="number-ball" class="number-ball">?</div>
+                    </div>
+                    
+                    <button onclick="startDraw()" class="btn-primary mt-8 animate-glow"
+                            id="number-btn">
+                        🔢 抽取号码
+                    </button>
+                </div>
+
+                <!-- 卡片模式 -->
+                <div id="card-mode" class="hidden mb-8">
+                    <div id="cards-container" class="grid grid-cols-4 md:grid-cols-6 gap-4 max-w-4xl mx-auto"
+003e
+                        <!-- 动态生成卡片 -->
+                    </div>
+                </div>
+
+                <!-- 控制按钮 -->
+                <div class="flex justify-center space-x-4">
+                    <button onclick="startDraw()" id="draw-btn" class="btn-primary animate-glow">
+                        <i class="fas fa-play mr-2"></i>开始抽奖
+                    </button>
+                    
+                    <button onclick="resetDraw()" class="bg-gray-500 text-white px-6 py-3 rounded-full font-bold hover:bg-gray-600 transition">
+                        <i class="fas fa-redo mr-2"></i>重置
+                    </button>
+                </div>
+
+                <!-- 剩余次数 -->
+                <div id="draws-remaining" class="mt-6 text-white text-lg">
+                    剩余抽奖次数：无限制
+                </div>
+            </div>
+        </section>
+
+        <!-- 历史记录 -->
+        <section id="history-section" class="hidden py-12">
+            <div class="max-w-4xl mx-auto px-4">
+                <div class="lottery-card">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-2xl font-bold"><i class="fas fa-history mr-2"></i>抽奖历史</h2>
+                        <button onclick="clearHistory()" class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-trash mr-2"></i>清空记录
+                        </button>
+                    </div>
+                    
+                    <div id="history-list" class="space-y-3">
+                        <!-- 动态生成历史记录 -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- 结果弹窗 -->
+    <div id="result-modal" class="result-modal">
+        <div class="result-content">
+            <button onclick="closeResult()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+003e
+                <i class="fas fa-times text-2xl"></i>
+            </button>
+            
+            <div class="text-6xl mb-4">🎉</div>
+            <h2 class="text-3xl font-bold text-gray-800 mb-4">恭喜中奖！</h2>
+            <div id="result-prize" class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-500 mb-6"
+003e
+                奖品名称
+            </div>
+            
+            <div class="flex justify-center space-x-4">
+                <button onclick="closeResult()" class="bg-gray-200 text-gray-700 px-6 py-3 rounded-full font-bold hover:bg-gray-300 transition"
+003e
+                    关闭
+                </button>
+                
+                <button onclick="startDraw(); closeResult();" class="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-full font-bold hover:from-purple-600 hover:to-pink-600 transition"
+003e
+                    再抽一次
+                </button>
+            </div>
         </div>
-        <p>加载地球数据中...</p>
     </div>
 
-    <div id="info">
-        <h1>🌍 EARTH ACTIVITY</h1>
-        <div class="stats">
-            <div class="stat-item">
-                <span class="pulse-dot"></span>
-                <span>实时活动: <strong id="activity-count">0</strong></span>
-            </div>
-            <div class="stat-item">
-                <span>活跃节点: <strong id="node-count">0</strong></span>
-            </div>
-            <div class="stat-item">
-                <span>数据传输: <strong id="data-rate">0</strong> MB/s</span>
-            </div>
-        </div>
-    </div>
-
-    <div id="controls">
-        <button class="btn active" onclick="setMode('network')">🌐 网络活动</button>
-        <button class="btn" onclick="setMode('data')">📊 数据中心</button>
-        <button class="btn" onclick="setMode('traffic')">🚀 实时流量</button>
-        <button class="btn" onclick="toggleRotation()">⏸️ 暂停旋转</button>
-    </div>
-
-    <div id="canvas-container"></div>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script>
-        // ============================================
-        // 实时活动地球 - Real-time Earth Activity
-        // ============================================
-        
-        let scene, camera, renderer;
-        let earth, atmosphere, stars;
-        let activityPoints = [];
-        let connectionLines = [];
-        let isRotating = true;
-        let currentMode = 'network';
-        let frameCount = 0;
-        
-        // 主要城市坐标（经纬度）
-        const cities = [
-            { name: '北京', lat: 39.9042, lon: 116.4074 },
-            { name: '上海', lat: 31.2304, lon: 121.4737 },
-            { name: '东京', lat: 35.6762, lon: 139.6503 },
-            { name: '首尔', lat: 37.5665, lon: 126.9780 },
-            { name: '新加坡', lat: 1.3521, lon: 103.8198 },
-            { name: '悉尼', lat: -33.8688, lon: 151.2093 },
-            { name: '伦敦', lat: 51.5074, lon: -0.1278 },
-            { name: '巴黎', lat: 48.8566, lon: 2.3522 },
-            { name: '柏林', lat: 52.5200, lon: 13.4050 },
-            { name: '莫斯科', lat: 55.7558, lon: 37.6173 },
-            { name: '纽约', lat: 40.7128, lon: -74.0060 },
-            { name: '旧金山', lat: 37.7749, lon: -122.4194 },
-            { name: '洛杉矶', lat: 34.0522, lon: -118.2437 },
-            { name: '芝加哥', lat: 41.8781, lon: -87.6298 },
-            { name: '多伦多', lat: 43.6532, lon: -79.3832 },
-            { name: '圣保罗', lat: -23.5505, lon: -46.6333 },
-            { name: '开罗', lat: 30.0444, lon: 31.2357 },
-            { name: '迪拜', lat: 25.2048, lon: 55.2708 },
-            { name: '孟买', lat: 19.0760, lon: 72.8777 },
-            { name: '班加罗尔', lat: 12.9716, lon: 77.5946 },
-            { name: '特拉维夫', lat: 32.0853, lon: 34.7818 },
-            { name: '约翰内斯堡', lat: -26.2041, lon: 28.0473 },
-            { name: '墨西哥城', lat: 19.4326, lon: -99.1332 },
-            { name: '温哥华', lat: 49.2827, lon: -123.1207 }
-        ];
-        
-        // 初始化场景
+        // 数据存储
+        let config = {
+            name: '公司年会大抽奖',
+            theme: 'lucky',
+            mode: 'wheel',
+            maxDraws: 0,
+            allowRepeat: false,
+            prizes: []
+        };
+
+        let history = JSON.parse(localStorage.getItem('lotteryHistory') || '[]');
+        let drawsCount = 0;
+        let isDrawing = false;
+        let currentRotation = 0;
+
+        // 预设模板
+        const templates = {
+            company: {
+                name: '公司年会大抽奖',
+                theme: 'lucky',
+                mode: 'wheel',
+                prizes: [
+                    { name: '🥇 一等奖：iPhone 16', probability: 1, count: 1, color: '#FFD700' },
+                    { name: '🥈 二等奖：iPad Air', probability: 3, count: 3, color: '#C0C0C0' },
+                    { name: '🥉 三等奖：AirPods', probability: 6, count: 10, color: '#CD7F32' },
+                    { name: '🎁 四等奖：购物卡500元', probability: 10, count: 20, color: '#FF6B6B' },
+                    { name: '🧧 五等奖：红包200元', probability: 20, count: 50, color: '#4ECDC4' },
+                    { name: '🍀 幸运奖：纪念品', probability: 60, count: 100, color: '#95E1D3' }
+                ]
+            },
+            family: {
+                name: '春节家庭聚会',
+                theme: 'spring',
+                mode: 'wheel',
+                prizes: [
+                    { name: '🧧 大红包 888元', probability: 5, count: 2, color: '#FF4757' },
+                    { name: '🧧 中红包 188元', probability: 15, count: 5, color: '#FF6348' },
+                    { name: '🧧 小红包 66元', probability: 30, count: 10, color: '#FFA502' },
+                    { name: '🎮 游戏时间', probability: 25, count: 0, color: '#7BED9F' },
+                    { name: '🎤 才艺表演', probability: 25, count: 0, color: '#70A1FF' }
+                ]
+            },
+            food: {
+                name: '今天吃什么？',
+                theme: 'party',
+                mode: 'wheel',
+                prizes: [
+                    { name: '🍜 火锅', probability: 20, count: 0, color: '#FF6B6B' },
+                    { name: '🍕 披萨', probability: 15, count: 0, color: '#FDCB6E' },
+                    { name: '🍱 日料', probability: 15, count: 0, color: '#6C5CE7' },
+                    { name: '🍔 汉堡', probability: 15, count: 0, color: '#FD79A8' },
+                    { name: '🥗 轻食', probability: 15, count: 0, color: '#00B894' },
+                    { name: '🍚 中餐', probability: 20, count: 0, color: '#E17055' }
+                ]
+            },
+            activity: {
+                name: '活动大抽奖',
+                theme: 'ocean',
+                mode: 'slot',
+                prizes: [
+                    { name: '🏆 特等奖', probability: 1, count: 1, color: '#FFD700' },
+                    { name: '🎁 一等奖', probability: 5, count: 5, color: '#FF6B6B' },
+                    { name: '🎀 二等奖', probability: 10, count: 10, color: '#4ECDC4' },
+                    { name: '🎊 三等奖', probability: 20, count: 20, color: '#45B7D1' },
+                    { name: '🎈 参与奖', probability: 64, count: 0, color: '#96CEB4' }
+                ]
+            },
+            custom: {
+                name: '自定义抽奖',
+                theme: 'lucky',
+                mode: 'wheel',
+                prizes: [
+                    { name: '奖品 1', probability: 50, count: 1, color: '#FF6B6B' },
+                    { name: '奖品 2', probability: 50, count: 1, color: '#4ECDC4' }
+                ]
+            }
+        };
+
+        // 初始化
         function init() {
-            const container = document.getElementById('canvas-container');
-            
-            // 创建场景
-            scene = new THREE.Scene();
-            
-            // 创建相机
-            camera = new THREE.PerspectiveCamera(
-                45,
-                window.innerWidth / window.innerHeight,
-                0.1,
-                1000
-            );
-            camera.position.z = 3.5;
-            
-            // 创建渲染器
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            container.appendChild(renderer.domElement);
-            
-            // 创建星空背景
-            createStars();
-            
-            // 创建地球
-            createEarth();
-            
-            // 创建大气层
-            createAtmosphere();
-            
-            // 创建活动点
-            createActivityPoints();
-            
-            // 添加光照
-            addLighting();
-            
-            // 添加鼠标控制
-            addMouseControls();
-            
-            // 窗口大小调整
-            window.addEventListener('resize', onWindowResize, false);
-            
-            // 隐藏加载画面
-            setTimeout(() => {
-                document.getElementById('loading').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('loading').style.display = 'none';
-                }, 500);
-            }, 1500);
-            
-            // 开始动画循环
-            animate();
-            
-            // 更新统计信息
-            updateStats();
+            loadTemplate('company');
+            renderPrizesList();
+            renderHistory();
+            updateDrawsRemaining();
         }
-        
-        // 创建星空背景
-        function createStars() {
-            const geometry = new THREE.BufferGeometry();
-            const vertices = [];
-            const colors = [];
+
+        // 显示页面
+        function showSection(section) {
+            document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
+            document.getElementById(section + '-section').classList.remove('hidden');
             
-            for (let i = 0; i < 3000; i++) {
-                const x = (Math.random() - 0.5) * 100;
-                const y = (Math.random() - 0.5) * 100;
-                const z = (Math.random() - 0.5) * 100;
-                vertices.push(x, y, z);
-                
-                // 星星颜色变化
-                const color = new THREE.Color();
-                color.setHSL(Math.random() * 0.2 + 0.5, 0.55, Math.random() * 0.25 + 0.55);
-                colors.push(color.r, color.g, color.b);
-            }
-            
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-            
-            const material = new THREE.PointsMaterial({
-                size: 0.05,
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.8
-            });
-            
-            stars = new THREE.Points(geometry, material);
-            scene.add(stars);
-        }
-        
-        // 创建地球纹理（使用 Canvas 生成）
-        function createEarthTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 2048;
-            canvas.height = 1024;
-            const ctx = canvas.getContext('2d');
-            
-            // 深空蓝背景
-            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            gradient.addColorStop(0, '#0a1628');
-            gradient.addColorStop(0.5, '#1a3a52');
-            gradient.addColorStop(1, '#0a1628');
-            ctx.fillStyle = gradient;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // 绘制大陆轮廓（简化版）
-            ctx.fillStyle = '#2d5a3d';
-            
-            // 北美洲
-            drawContinent(ctx, 300, 250, 200, 150);
-            // 南美洲
-            drawContinent(ctx, 380, 500, 120, 200);
-            // 欧洲
-            drawContinent(ctx, 950, 220, 150, 100);
-            // 非洲
-            drawContinent(ctx, 980, 400, 180, 220);
-            // 亚洲
-            drawContinent(ctx, 1300, 250, 350, 200);
-            // 澳大利亚
-            drawContinent(ctx, 1600, 550, 120, 80);
-            
-            // 添加科技网格线
-            ctx.strokeStyle = 'rgba(0, 212, 255, 0.15)';
-            ctx.lineWidth = 1;
-            
-            // 经线
-            for (let i = 0; i <= canvas.width; i += canvas.width / 36) {
-                ctx.beginPath();
-                ctx.moveTo(i, 0);
-                ctx.lineTo(i, canvas.height);
-                ctx.stroke();
-            }
-            
-            // 纬线
-            for (let i = 0; i <= canvas.height; i += canvas.height / 18) {
-                ctx.beginPath();
-                ctx.moveTo(0, i);
-                ctx.lineTo(canvas.width, i);
-                ctx.stroke();
-            }
-            
-            const texture = new THREE.CanvasTexture(canvas);
-            return texture;
-        }
-        
-        // 绘制大陆
-        function drawContinent(ctx, x, y, w, h) {
-            ctx.beginPath();
-            ctx.ellipse(x, y, w/2, h/2, 0, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // 添加一些细节
-            for (let i = 0; i < 5; i++) {
-                const dx = (Math.random() - 0.5) * w * 0.8;
-                const dy = (Math.random() - 0.5) * h * 0.8;
-                const size = Math.random() * 30 + 10;
-                ctx.beginPath();
-                ctx.ellipse(x + dx, y + dy, size, size * 0.7, 0, 0, Math.PI * 2);
-                ctx.fill();
+            if (section === 'lottery') {
+                initLotteryDisplay();
             }
         }
-        
-        // 创建地球凹凸贴图
-        function createBumpTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 1024;
-            canvas.height = 512;
-            const ctx = canvas.getContext('2d');
+
+        // 加载模板
+        function loadTemplate(templateName) {
+            const template = templates[templateName];
+            config = JSON.parse(JSON.stringify(template));
             
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            // 更新UI
+            document.getElementById('activity-name').value = config.name;
+            document.getElementById('theme-select').value = config.theme;
+            document.getElementById('mode-select').value = config.mode;
             
-            // 绘制山脉/地形（亮色区域）
-            ctx.fillStyle = '#808080';
+            changeTheme(config.theme);
+            renderPrizesList();
             
-            // 各大洲的山脉
-            const mountainRanges = [
-                { x: 150, y: 125, w: 100, h: 75 }, // 北美落基山脉
-                { x: 190, y: 250, w: 60, h: 100 }, // 南美安第斯山脉
-                { x: 475, y: 110, w: 75, h: 50 }, // 欧洲阿尔卑斯
-                { x: 490, y: 200, w: 90, h: 110 }, // 非洲乞力马扎罗
-                { x: 650, y: 125, w: 175, h: 100 }, // 亚洲喜马拉雅
-                { x: 800, y: 275, w: 60, h: 40 }, // 澳大利亚
-            ];
-            
-            mountainRanges.forEach(m => {
-                const gradient = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, m.w);
-                gradient.addColorStop(0, '#ffffff');
-                gradient.addColorStop(0.5, '#808080');
-                gradient.addColorStop(1, '#000000');
-                ctx.fillStyle = gradient;
-                ctx.beginPath();
-                ctx.ellipse(m.x, m.y, m.w, m.h, 0, 0, Math.PI * 2);
-                ctx.fill();
-            });
-            
-            return new THREE.CanvasTexture(canvas);
-        }
-        
-        // 创建地球
-        function createEarth() {
-            const geometry = new THREE.SphereGeometry(1, 64, 64);
-            
-            const material = new THREE.MeshPhongMaterial({
-                map: createEarthTexture(),
-                bumpMap: createBumpTexture(),
-                bumpScale: 0.05,
-                specular: new THREE.Color(0x333333),
-                shininess: 5
-            });
-            
-            earth = new THREE.Mesh(geometry, material);
-            scene.add(earth);
-        }
-        
-        // 创建大气层光晕
-        function createAtmosphere() {
-            const vertexShader = `
-                varying vec3 vNormal;
-                void main() {
-                    vNormal = normalize(normalMatrix * normal);
-                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-                }
-            `;
-            
-            const fragmentShader = `
-                varying vec3 vNormal;
-                void main() {
-                    float intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 4.0);
-                    gl_FragColor = vec4(0.0, 0.8, 1.0, 1.0) * intensity;
-                }
-            `;
-            
-            const geometry = new THREE.SphereGeometry(1.2, 64, 64);
-            const material = new THREE.ShaderMaterial({
-                vertexShader: vertexShader,
-                fragmentShader: fragmentShader,
-                blending: THREE.AdditiveBlending,
-                side: THREE.BackSide,
-                transparent: true
-            });
-            
-            atmosphere = new THREE.Mesh(geometry, material);
-            scene.add(atmosphere);
-        }
-        
-        // 经纬度转换为3D坐标
-        function latLonToVector3(lat, lon, radius) {
-            const phi = (90 - lat) * (Math.PI / 180);
-            const theta = (lon + 180) * (Math.PI / 180);
-            
-            const x = -(radius * Math.sin(phi) * Math.cos(theta));
-            const z = (radius * Math.sin(phi) * Math.sin(theta));
-            const y = (radius * Math.cos(phi));
-            
-            return new THREE.Vector3(x, y, z);
-        }
-        
-        // 创建活动点
-        function createActivityPoints() {
-            // 清除旧的活动点
-            activityPoints.forEach(p => {
-                scene.remove(p.mesh);
-                if (p.mesh.geometry) p.mesh.geometry.dispose();
-                if (p.mesh.material) p.mesh.material.dispose();
-            });
-            activityPoints = [];
-            
-            // 清除连接线
-            connectionLines.forEach(l => scene.remove(l));
-            connectionLines = [];
-            
-            // 为每个城市创建活动点
-            cities.forEach((city, index) => {
-                const position = latLonToVector3(city.lat, city.lon, 1.02);
-                
-                // 创建光点
-                const geometry = new THREE.SphereGeometry(0.02, 16, 16);
-                const color = getModeColor();
-                const material = new THREE.MeshBasicMaterial({
-                    color: color,
-                    transparent: true,
-                    opacity: 0.9
-                });
-                
-                const mesh = new THREE.Mesh(geometry, material);
-                mesh.position.copy(position);
-                earth.add(mesh);
-                
-                // 创建光晕效果
-                const glowGeometry = new THREE.SphereGeometry(0.04, 16, 16);
-                const glowMaterial = new THREE.MeshBasicMaterial({
-                    color: color,
-                    transparent: true,
-                    opacity: 0.3
-                });
-                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-                mesh.add(glow);
-                
-                activityPoints.push({
-                    mesh: mesh,
-                    glow: glow,
-                    city: city,
-                    baseScale: 1,
-                    pulsePhase: Math.random() * Math.PI * 2,
-                    pulseSpeed: 0.5 + Math.random() * 1.5
-                });
-            });
-            
-            // 创建连接线
-            createConnections();
-        }
-        
-        // 获取当前模式的颜色
-        function getModeColor() {
-            switch(currentMode) {
-                case 'network': return 0x00ff88;
-                case 'data': return 0xff6b6b;
-                case 'traffic': return 0x00d4ff;
-                default: return 0x00ff88;
-            }
-        }
-        
-        // 创建城市间的连接线
-        function createConnections() {
-            const color = getModeColor();
-            
-            // 随机连接一些城市
-            for (let i = 0; i < cities.length; i++) {
-                const connections = 2 + Math.floor(Math.random() * 3);
-                for (let j = 0; j < connections; j++) {
-                    const targetIndex = Math.floor(Math.random() * cities.length);
-                    if (targetIndex !== i) {
-                        createConnectionLine(i, targetIndex, color);
-                    }
-                }
-            }
-        }
-        
-        // 创建两点之间的弧线连接
-        function createConnectionLine(startIdx, endIdx, color) {
-            const start = latLonToVector3(cities[startIdx].lat, cities[startIdx].lon, 1.02);
-            const end = latLonToVector3(cities[endIdx].lat, cities[endIdx].lon, 1.02);
-            
-            // 计算中点，向外延伸创建弧线
-            const mid = start.clone().add(end).multiplyScalar(0.5);
-            const midLength = mid.length();
-            mid.normalize().multiplyScalar(midLength + 0.3);
-            
-            // 创建曲线路径
-            const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
-            const points = curve.getPoints(50);
-            
-            const geometry = new THREE.BufferGeometry().setFromPoints(points);
-            const material = new THREE.LineBasicMaterial({
-                color: color,
-                transparent: true,
-                opacity: 0.3
-            });
-            
-            const line = new THREE.Line(geometry, material);
-            earth.add(line);
-            connectionLines.push(line);
-        }
-        
-        // 添加光照
-        function addLighting() {
-            // 环境光
-            const ambientLight = new THREE.AmbientLight(0x333333);
-            scene.add(ambientLight);
-            
-            // 主光源（太阳光）
-            const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
-            sunLight.position.set(5, 3, 5);
-            scene.add(sunLight);
-            
-            // 补光
-            const fillLight = new THREE.DirectionalLight(0x4444ff, 0.5);
-            fillLight.position.set(-5, 0, -5);
-            scene.add(fillLight);
-        }
-        
-        // 鼠标控制
-        let isDragging = false;
-        let previousMousePosition = { x: 0, y: 0 };
-        let targetRotationX = 0;
-        let targetRotationY = 0;
-        
-        function addMouseControls() {
-            const container = document.getElementById('canvas-container');
-            
-            container.addEventListener('mousedown', (e) => {
-                isDragging = true;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            });
-            
-            container.addEventListener('mousemove', (e) => {
-                if (isDragging) {
-                    const deltaMove = {
-                        x: e.clientX - previousMousePosition.x,
-                        y: e.clientY - previousMousePosition.y
-                    };
-                    
-                    targetRotationY += deltaMove.x * 0.005;
-                    targetRotationX += deltaMove.y * 0.005;
-                    
-                    previousMousePosition = { x: e.clientX, y: e.clientY };
+            // 选中模板卡片
+            document.querySelectorAll('.template-card').forEach((card, index) => {
+                card.classList.remove('selected');
+                if (Object.keys(templates)[index] === templateName) {
+                    card.classList.add('selected');
                 }
             });
-            
-            container.addEventListener('mouseup', () => {
-                isDragging = false;
-            });
-            
-            container.addEventListener('wheel', (e) => {
-                camera.position.z += e.deltaY * 0.001;
-                camera.position.z = Math.max(1.8, Math.min(6, camera.position.z));
-            });
         }
-        
-        // 动画循环
-        function animate() {
-            requestAnimationFrame(animate);
-            frameCount++;
-            
-            // 地球自转
-            if (isRotating && !isDragging) {
-                earth.rotation.y += 0.001;
-                targetRotationY = earth.rotation.y;
-            } else {
-                earth.rotation.y += (targetRotationY - earth.rotation.y) * 0.05;
-                earth.rotation.x += (targetRotationX - earth.rotation.x) * 0.05;
-            }
-            
-            // 星空缓慢旋转
-            stars.rotation.y += 0.0002;
-            
-            // 活动点脉冲动画
-            const time = Date.now() * 0.001;
-            activityPoints.forEach((point, index) => {
-                const scale = point.baseScale + Math.sin(time * point.pulseSpeed + point.pulsePhase) * 0.3;
-                point.mesh.scale.setScalar(Math.max(0.5, scale));
-                point.glow.scale.setScalar(1 + Math.sin(time * point.pulseSpeed + point.pulsePhase) * 0.5);
-                
-                // 随机闪烁
-                if (Math.random() < 0.02) {
-                    point.mesh.material.opacity = 0.5 + Math.random() * 0.5;
-                }
-            });
-            
-            // 连接线闪烁效果
-            connectionLines.forEach((line, index) => {
-                line.material.opacity = 0.2 + Math.sin(time * 2 + index) * 0.1;
-            });
-            
-            // 每60帧更新一次统计
-            if (frameCount % 60 === 0) {
-                updateStats();
-            }
-            
-            renderer.render(scene, camera);
+
+        // 切换主题
+        function changeTheme(theme) {
+            config.theme = theme;
+            document.body.className = `theme-${theme} min-h-screen`;
         }
-        
-        // 更新统计信息
-        function updateStats() {
-            const activityCount = Math.floor(1000 + Math.random() * 500);
-            const nodeCount = cities.length;
-            const dataRate = (Math.random() * 100 + 50).toFixed(1);
-            
-            document.getElementById('activity-count').textContent = activityCount.toLocaleString();
-            document.getElementById('node-count').textContent = nodeCount;
-            document.getElementById('data-rate').textContent = dataRate;
-        }
-        
-        // 窗口大小调整
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-        
+
         // 切换模式
-        function setMode(mode) {
-            currentMode = mode;
+        function changeMode(mode) {
+            config.mode = mode;
+        }
+
+        // 渲染奖品列表
+        function renderPrizesList() {
+            const container = document.getElementById('prizes-list');
+            container.innerHTML = '';
             
-            // 更新按钮状态
-            document.querySelectorAll('.btn').forEach((btn, index) => {
-                if (index < 3) {
-                    btn.classList.toggle('active', 
-                        (mode === 'network' && index === 0) ||
-                        (mode === 'data' && index === 1) ||
-                        (mode === 'traffic' && index === 2)
-                    );
-                }
+            config.prizes.forEach((prize, index) => {
+                const div = document.createElement('div');
+                div.className = 'prize-item';
+                div.innerHTML = `
+                    <div class="flex items-center space-x-3 flex-1">
+                        <input type="color" value="${prize.color}" 
+                               onchange="updatePrize(${index}, 'color', this.value)"
+                               class="w-10 h-10 rounded cursor-pointer">
+                        <input type="text" value="${prize.name}" 
+                               onchange="updatePrize(${index}, 'name', this.value)"
+                               class="flex-1 px-3 py-2 border rounded-lg text-sm">
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <div class="text-sm">
+                            <label class="block text-xs text-gray-500">概率</label>
+                            <input type="number" value="${prize.probability}" min="0" max="100"
+                                   onchange="updatePrize(${index}, 'probability', parseFloat(this.value))"
+                                   class="w-16 px-2 py-1 border rounded text-center">%
+                        </div>
+                        <div class="text-sm">
+                            <label class="block text-xs text-gray-500">数量</label>
+                            <input type="number" value="${prize.count}" min="0"
+                                   onchange="updatePrize(${index}, 'count', parseInt(this.value))"
+                                   class="w-16 px-2 py-1 border rounded text-center"
+003e
+                        </div>
+                        
+                        <button onclick="removePrize(${index})" class="text-red-500 hover:text-red-700">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
             });
+        }
+
+        // 更新奖品
+        function updatePrize(index, field, value) {
+            config.prizes[index][field] = value;
+        }
+
+        // 添加奖品
+        function addPrize() {
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FECA57', '#FF9FF3', '#54A0FF'];
+            config.prizes.push({
+                name: `新奖品 ${config.prizes.length + 1}`,
+                probability: 10,
+                count: 1,
+                color: colors[config.prizes.length % colors.length]
+            });
+            renderPrizesList();
+        }
+
+        // 删除奖品
+        function removePrize(index) {
+            config.prizes.splice(index, 1);
+            renderPrizesList();
+        }
+
+        // 初始化抽奖显示
+        function initLotteryDisplay() {
+            // 更新标题
+            config.name = document.getElementById('activity-name').value;
+            document.getElementById('lottery-title').textContent = config.name;
             
-            // 重新创建活动点
-            createActivityPoints();
+            // 隐藏所有模式
+            document.getElementById('wheel-mode').classList.add('hidden');
+            document.getElementById('slot-mode').classList.add('hidden');
+            document.getElementById('number-mode').classList.add('hidden');
+            document.getElementById('card-mode').classList.add('hidden');
+            document.getElementById('draw-btn').classList.add('hidden');
+            
+            // 显示当前模式
+            const mode = document.getElementById('mode-select').value;
+            document.getElementById(`${mode}-mode`).classList.remove('hidden');
+            
+            if (mode === 'wheel') {
+                initWheel();
+                document.getElementById('draw-btn').classList.remove('hidden');
+            } else if (mode === 'slot') {
+                document.getElementById('slot-btn').classList.remove('hidden');
+            } else if (mode === 'number') {
+                document.getElementById('number-btn').classList.remove('hidden');
+            } else if (mode === 'card') {
+                initCards();
+            }
         }
-        
-        // 切换旋转
-        function toggleRotation() {
-            isRotating = !isRotating;
-            document.querySelectorAll('.btn')[3].textContent = isRotating ? '⏸️ 暂停旋转' : '▶️ 开始旋转';
+
+        // 初始化转盘
+        function initWheel() {
+            const wheel = document.getElementById('wheel');
+            wheel.innerHTML = '';
+            wheel.style.transform = 'rotate(0deg)';
+            currentRotation = 0;
+            
+            const totalProb = config.prizes.reduce((sum, p) => sum + p.probability, 0);
+            let currentAngle = 0;
+            
+            config.prizes.forEach((prize, index) => {
+                const angle = (prize.probability / totalProb) * 360;
+                const item = document.createElement('div');
+                item.className = 'wheel-item';
+                item.style.transform = `rotate(${currentAngle}deg)`;
+                item.style.background = `conic-gradient(from 0deg, ${prize.color} 0deg, ${adjustColor(prize.color, -20)} ${angle}deg, transparent ${angle}deg)`;
+                item.style.clipPath = `polygon(100% 0, 100% 100%, 0 100%)`;
+                item.innerHTML = `<span style="transform: rotate(${angle/2}deg)">${prize.name}</span>`;
+                wheel.appendChild(item);
+                currentAngle += angle;
+            });
         }
-        
+
+        // 调整颜色亮度
+        function adjustColor(color, amount) {
+            const num = parseInt(color.replace('#', ''), 16);
+            const r = Math.max(0, Math.min(255, (num >> 16) + amount));
+            const g = Math.max(0, Math.min(255, ((num >> 8) & 0x00FF) + amount));
+            const b = Math.max(0, Math.min(255, (num & 0x0000FF) + amount));
+            return `#${((r << 16) | (g << 8) | b).toString(16).padStart(6, '0')}`;
+        }
+
+        // 初始化卡片
+        function initCards() {
+            const container = document.getElementById('cards-container');
+            container.innerHTML = '';
+            
+            config.prizes.forEach((prize, index) => {
+                const card = document.createElement('div');
+                card.className = `aspect-square rounded-xl cursor-pointer transform transition hover:scale-105 flex items-center justify-center text-4xl font-bold shadow-lg ${isDrawing ? 'pointer-events-none' : ''}`;
+                card.style.background = `linear-gradient(135deg, ${prize.color}, ${adjustColor(prize.color, -30)})`;
+                card.style.color = 'white';
+                card.style.textShadow = '0 2px 4px rgba(0,0,0,0.3)';
+                card.innerHTML = '?';
+                card.dataset.index = index;
+                card.dataset.revealed = 'false';
+                card.onclick = () => revealCard(card);
+                container.appendChild(card);
+            });
+        }
+
+        // 翻卡片
+        function revealCard(card) {
+            if (card.dataset.revealed === 'true' || isDrawing) return;
+            
+            isDrawing = true;
+            const prize = config.prizes[parseInt(card.dataset.index)];
+            
+            // 翻转动画
+            card.style.transform = 'rotateY(90deg)';
+            card.style.transition = 'transform 0.3s';
+            
+            setTimeout(() => {
+                card.innerHTML = `<div class="text-center p-2"><div class="text-sm">${prize.name}</div></div>`;
+                card.style.transform = 'rotateY(0deg)';
+                card.dataset.revealed = 'true';
+                
+                // 记录结果
+                addToHistory(prize.name);
+                
+                // 显示结果
+                setTimeout(() => {
+                    showResult(prize.name);
+                    createConfetti();
+                    isDrawing = false;
+                }, 500);
+            }, 300);
+        }
+
+        // 开始抽奖
+        function startDraw() {
+            if (isDrawing) return;
+            
+            // 检查次数限制
+            const maxDraws = parseInt(document.getElementById('max-draws').value) || 0;
+            if (maxDraws > 0 && drawsCount >= maxDraws) {
+                alert('抽奖次数已达上限！');
+                return;
+            }
+            
+            isDrawing = true;
+            const mode = document.getElementById('mode-select').value;
+            
+            if (mode === 'wheel') {
+                spinWheel();
+            } else if (mode === 'slot') {
+                spinSlot();
+            } else if (mode === 'number') {
+                drawNumber();
+            }
+        }
+
+        // 转动转盘
+        function spinWheel() {
+            const wheel = document.getElementById('wheel');
+            const totalProb = config.prizes.reduce((sum, p) => sum + p.probability, 0);
+            
+            // 随机选择奖品
+            const random = Math.random() * totalProb;
+            let cumulative = 0;
+            let selectedIndex = 0;
+            
+            for (let i = 0; i < config.prizes.length; i++) {
+                cumulative += config.prizes[i].probability;
+                if (random <= cumulative) {
+                    selectedIndex = i;
+                    break;
+                }
+            }
+            
+            // 计算旋转角度
+            const baseRotation = 360 * 5; // 至少转5圈
+            const prizeAngle = (selectedIndex / config.prizes.length) * 360;
+            const randomOffset = Math.random() * (360 / config.prizes.length) * 0.8 + (360 / config.prizes.length) * 0.1;
+            const targetRotation = baseRotation + (360 - prizeAngle) + randomOffset;
+            
+            currentRotation += targetRotation;
+            wheel.style.transition = 'transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)';
+            wheel.style.transform = `rotate(${currentRotation}deg)`;
+            
+            setTimeout(() => {
+                const prize = config.prizes[selectedIndex];
+                addToHistory(prize.name);
+                showResult(prize.name);
+                createConfetti();
+                drawsCount++;
+                updateDrawsRemaining();
+                isDrawing = false;
+            }, 4000);
+        }
+
+        // 老虎机
+        function spinSlot() {
+            const resultDiv = document.getElementById('slot-result');
+            const btn = document.getElementById('slot-btn');
+            btn.disabled = true;
+            btn.textContent = '抽奖中...';
+            
+            let iterations = 0;
+            const maxIterations = 30;
+            const interval = setInterval(() => {
+                const randomPrize = config.prizes[Math.floor(Math.random() * config.prizes.length)];
+                resultDiv.textContent = randomPrize.name;
+                resultDiv.style.transform = 'scale(0.9)';
+                setTimeout(() => resultDiv.style.transform = 'scale(1)', 50);
+                
+                iterations++;
+                if (iterations >= maxIterations) {
+                    clearInterval(interval);
+                    
+                    // 最终选择
+                    const totalProb = config.prizes.reduce((sum, p) => sum + p.probability, 0);
+                    const random = Math.random() * totalProb;
+                    let cumulative = 0;
+                    let selectedPrize = config.prizes[0];
+                    
+                    for (let prize of config.prizes) {
+                        cumulative += prize.probability;
+                        if (random <= cumulative) {
+                            selectedPrize = prize;
+                            break;
+                        }
+                    }
+                    
+                    resultDiv.textContent = selectedPrize.name;
+                    addToHistory(selectedPrize.name);
+                    showResult(selectedPrize.name);
+                    createConfetti();
+                    
+                    btn.disabled = false;
+                    btn.textContent = '🎰 再抽一次';
+                    drawsCount++;
+                    updateDrawsRemaining();
+                    isDrawing = false;
+                }
+            }, 100);
+        }
+
+        // 数字球
+        function drawNumber() {
+            const ball = document.getElementById('number-ball');
+            const btn = document.getElementById('number-btn');
+            btn.disabled = true;
+            
+            let iterations = 0;
+            const maxIterations = 20;
+            
+            const interval = setInterval(() => {
+                ball.textContent = Math.floor(Math.random() * 100) + 1;
+                ball.classList.add('animate-shake');
+                setTimeout(() => ball.classList.remove('animate-shake'), 100);
+                
+                iterations++;
+                if (iterations >= maxIterations) {
+                    clearInterval(interval);
+                    
+                    // 选择奖品
+                    const totalProb = config.prizes.reduce((sum, p) => sum + p.probability, 0);
+                    const random = Math.random() * totalProb;
+                    let cumulative = 0;
+                    let selectedPrize = config.prizes[0];
+                    
+                    for (let prize of config.prizes) {
+                        cumulative += prize.probability;
+                        if (random <= cumulative) {
+                            selectedPrize = prize;
+                            break;
+                        }
+                    }
+                    
+                    ball.textContent = selectedPrize.name.substring(0, 2);
+                    addToHistory(selectedPrize.name);
+                    showResult(selectedPrize.name);
+                    createConfetti();
+                    
+                    btn.disabled = false;
+                    drawsCount++;
+                    updateDrawsRemaining();
+                    isDrawing = false;
+                }
+            }, 150);
+        }
+
+        // 显示结果
+        function showResult(prizeName) {
+            document.getElementById('result-prize').textContent = prizeName;
+            document.getElementById('result-modal').classList.add('active');
+        }
+
+        // 关闭结果
+        function closeResult() {
+            document.getElementById('result-modal').classList.remove('active');
+        }
+
+        // 创建彩带
+        function createConfetti() {
+            const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF9FF3'];
+            
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
+                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+                    confetti.style.width = (Math.random() * 10 + 5) + 'px';
+                    confetti.style.height = (Math.random() * 10 + 5) + 'px';
+                    document.body.appendChild(confetti);
+                    
+                    setTimeout(() => confetti.remove(), 4000);
+                }, i * 30);
+            }
+        }
+
+        // 添加到历史
+        function addToHistory(prizeName) {
+            const record = {
+                prize: prizeName,
+                time: new Date().toLocaleString('zh-CN'),
+                activity: config.name
+            };
+            history.unshift(record);
+            localStorage.setItem('lotteryHistory', JSON.stringify(history));
+            renderHistory();
+        }
+
+        // 渲染历史
+        function renderHistory() {
+            const container = document.getElementById('history-list');
+            
+            if (history.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-500 py-8">暂无抽奖记录</div>';
+                return;
+            }
+            
+            container.innerHTML = history.map((record, index) => `
+                <div class="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                    <div>
+                        <div class="font-bold text-gray-800">${record.prize}</div>
+                        <div class="text-sm text-gray-500">${record.activity} · ${record.time}</div>
+                    </div>
+                    <div class="text-2xl">${index < 3 ? '🏆' : '🎁'}</div>
+                </div>
+            `).join('');
+        }
+
+        // 清空历史
+        function clearHistory() {
+            if (confirm('确定要清空所有抽奖记录吗？')) {
+                history = [];
+                localStorage.removeItem('lotteryHistory');
+                renderHistory();
+            }
+        }
+
+        // 重置抽奖
+        function resetDraw() {
+            drawsCount = 0;
+            updateDrawsRemaining();
+            
+            if (config.mode === 'wheel') {
+                initWheel();
+            } else if (config.mode === 'card') {
+                initCards();
+            }
+        }
+
+        // 更新剩余次数
+        function updateDrawsRemaining() {
+            const maxDraws = parseInt(document.getElementById('max-draws').value) || 0;
+            const remaining = document.getElementById('draws-remaining');
+            
+            if (maxDraws > 0) {
+                remaining.textContent = `剩余抽奖次数：${maxDraws - drawsCount}`;
+            } else {
+                remaining.textContent = '剩余抽奖次数：无限制';
+            }
+        }
+
         // 启动
         init();
     </script>
