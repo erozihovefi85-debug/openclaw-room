@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  openclaw-room:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: openclaw-room
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # 可选：使用Caddy作为反向代理（支持HTTPS）
+  # caddy:
+  #   image: caddy:alpine
+  #   container_name: openclaw-caddy
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./Caddyfile:/etc/caddy/Caddyfile
+  #     - caddy_data:/data
+  #     - caddy_config:/config
+  #   restart: unless-stopped
+  #   depends_on:
+  #     - openclaw-room
+
+# volumes:
+#   caddy_data:
+#   caddy_config:
